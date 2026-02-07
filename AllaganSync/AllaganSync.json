@@ -1,0 +1,13 @@
+{
+    "Author": "izaghar",
+    "Name": "Allagan Sync",
+    "Punchline": "Sync your FFXIV collections with allagan.app",
+    "Description": "Allagan Sync - Track and sync your mounts, minions, emotes, orchestrions, and titles",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "collection",
+        "sync",
+        "mounts",
+        "minions"
+    ]
+}
