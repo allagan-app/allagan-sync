@@ -7,7 +7,7 @@ Dalamud plugin for syncing FFXIV collections with allagan.app.
 Use this URL in `Settings -> Experimental -> Custom Plugin Repositories`:
 
 ```text
-https://raw.githubusercontent.com/allagan-app/allagan-sync/main/pluginmaster.json
+https://allagan.app/dalamud/pluginmaster.json
 ```
 
 After adding the URL, open `/xlplugins`, search for `Allagan Sync`, and install.
