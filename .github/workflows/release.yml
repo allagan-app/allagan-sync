@@ -46,42 +46,13 @@ jobs:
             throw "assets/icon.png not found"
           }
 
-          $manifest = Get-Content "AllaganSync/AllaganSync.json" -Raw | ConvertFrom-Json
           [xml]$csproj = Get-Content "AllaganSync/AllaganSync.csproj"
           $version = $csproj.Project.PropertyGroup.Version
           if ([string]::IsNullOrWhiteSpace($version)) {
             throw "Version not found in AllaganSync.csproj"
           }
-          $assemblyVersion = if (($version -split '\.').Count -eq 3) { "$version.0" } else { $version }
-
-          $repoUrl = "https://github.com/${{ github.repository }}"
-          $latestZipUrl = "$repoUrl/releases/latest/download/latest.zip"
-          $iconUrl = "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/icon.png"
-          $lastUpdate = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-
-          $pluginMasterEntry = [ordered]@{
-            Author = $manifest.Author
-            Name = $manifest.Name
-            Punchline = $manifest.Punchline
-            Description = $manifest.Description
-            ApplicableVersion = $manifest.ApplicableVersion
-            Tags = $manifest.Tags
-            InternalName = "AllaganSync"
-            AssemblyVersion = $assemblyVersion
-            RepoUrl = $repoUrl
-            DalamudApiLevel = 14
-            DownloadLinkInstall = $latestZipUrl
-            DownloadLinkUpdate = $latestZipUrl
-            DownloadLinkTesting = $latestZipUrl
-            IconUrl = $iconUrl
-            LastUpdate = $lastUpdate
-          }
-
-          $pluginMasterPath = "pluginmaster.json"
-          @($pluginMasterEntry) | ConvertTo-Json -Depth 8 | Set-Content -Path $pluginMasterPath -Encoding utf8NoBOM
 
           "zip_path=$($zip.FullName)" >> $env:GITHUB_OUTPUT
-          "pluginmaster_path=$((Resolve-Path $pluginMasterPath).Path)" >> $env:GITHUB_OUTPUT
           "icon_path=$($icon.Path)" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
 
@@ -93,5 +64,4 @@ jobs:
           generate_release_notes: true
           files: |
             ${{ steps.assets.outputs.zip_path }}
-            ${{ steps.assets.outputs.pluginmaster_path }}
             ${{ steps.assets.outputs.icon_path }}
