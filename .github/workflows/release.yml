@@ -37,31 +37,37 @@ jobs:
         shell: pwsh
         run: |
           $zip = Get-ChildItem -Path "AllaganSync/bin" -Recurse -Filter "latest.zip" | Select-Object -First 1
-          if (-not $zip) {
-            throw "latest.zip not found under AllaganSync/bin"
-          }
+          if (-not $zip) { throw "latest.zip not found under AllaganSync/bin" }
 
           $icon = Resolve-Path "assets/icon.png"
-          if (-not $icon) {
-            throw "assets/icon.png not found"
-          }
-
-          [xml]$csproj = Get-Content "AllaganSync/AllaganSync.csproj"
-          $version = $csproj.Project.PropertyGroup.Version
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            throw "Version not found in AllaganSync.csproj"
-          }
+          if (-not $icon) { throw "assets/icon.png not found" }
 
           "zip_path=$($zip.FullName)" >> $env:GITHUB_OUTPUT
           "icon_path=$($icon.Path)" >> $env:GITHUB_OUTPUT
-          "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            ${{ steps.assets.outputs.zip_path }}
-            ${{ steps.assets.outputs.icon_path }}
+      - name: Create draft release (if missing)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ github.ref_name }}" *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --draft --generate-notes
+          }
+
+      - name: Upload assets to release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.ref_name }}" `
+            "${{ steps.assets.outputs.zip_path }}" `
+            "${{ steps.assets.outputs.icon_path }}" `
+            --clobber
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --draft=false --latest
