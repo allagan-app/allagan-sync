@@ -21,6 +21,7 @@ public unsafe class RetainerMissionTracker : IGameEventTracker
     private readonly IPluginLog log;
     private readonly IDataManager dataManager;
     private readonly uint maxRetainerLevel;
+    private readonly HashSet<uint> randomTaskIds;
     private Hook<RetainerTaskResultDelegate>? retainerTaskHook;
 
     public string EventKey => "retainer_mission_result";
@@ -43,6 +44,17 @@ public unsafe class RetainerMissionTracker : IGameEventTracker
             .Select(r => r.RowId)
             .DefaultIfEmpty(100u)
             .Max() ?? 100;
+
+        var retainerTaskSheet = dataManager.GetExcelSheet<RetainerTask>();
+        if (retainerTaskSheet == null)
+        {
+            log.Warning("RetainerMissionTracker: Failed to load RetainerTask sheet, random task filtering unavailable.");
+            randomTaskIds = [];
+        }
+        else
+        {
+            randomTaskIds = retainerTaskSheet.Where(row => row.IsRandom).Select(row => row.RowId).ToHashSet();
+        }
 
         try
         {
@@ -82,6 +94,9 @@ public unsafe class RetainerMissionTracker : IGameEventTracker
                 log.Warning("RetainerMissionTracker: RetainerTaskId was 0.");
                 return;
             }
+
+            if (!randomTaskIds.Contains(agent->RetainerTaskId))
+                return;
 
             var results = new List<RetainerMissionResultItem>();
             for (var i = 0; i < 2; i++)
