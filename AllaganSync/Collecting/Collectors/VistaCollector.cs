@@ -4,16 +4,15 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.Sheets;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class VistaService
+public class VistaCollector(IDataManager dataManager) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
-
-    public VistaService(IDataManager dataManager)
-    {
-        this.dataManager = dataManager;
-    }
+    public string CollectionKey => "vistas";
+    public string DisplayName => "Vistas";
+    public bool NeedsDataRequest => false;
+    public bool IsDataReady => true;
+    public void RequestData() { }
 
     private static bool IsValid(Adventure adventure)
     {

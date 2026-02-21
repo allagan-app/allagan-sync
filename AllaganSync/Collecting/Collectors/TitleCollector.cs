@@ -4,17 +4,34 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.Sheets;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class TitleService
+public class TitleCollector(IDataManager dataManager, IPluginLog log) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
-    private readonly IPluginLog log;
+    public string CollectionKey => "titles";
+    public string DisplayName => "Titles";
+    public bool NeedsDataRequest => true;
 
-    public TitleService(IDataManager dataManager, IPluginLog log)
+    public unsafe bool IsDataReady
     {
-        this.dataManager = dataManager;
-        this.log = log;
+        get
+        {
+            var uiState = UIState.Instance();
+            return uiState != null && uiState->TitleList.DataReceived;
+        }
+    }
+
+    public unsafe void RequestData()
+    {
+        var uiState = UIState.Instance();
+        if (uiState == null)
+            return;
+
+        if (!uiState->TitleList.DataReceived && !uiState->TitleList.DataPending)
+        {
+            log.Info("TitleCollector: Requesting title list from server...");
+            uiState->TitleList.RequestTitleList();
+        }
     }
 
     private static bool IsValid(Title title)
@@ -28,19 +45,6 @@ public class TitleService
         return sheet?.Count(IsValid) ?? 0;
     }
 
-    public unsafe void RequestTitleData()
-    {
-        var uiState = UIState.Instance();
-        if (uiState == null)
-            return;
-
-        if (!uiState->TitleList.DataReceived && !uiState->TitleList.DataPending)
-        {
-            log.Info("TitleService: Requesting title list from server...");
-            uiState->TitleList.RequestTitleList();
-        }
-    }
-
     public unsafe List<uint> GetUnlockedIds()
     {
         var unlockedIds = new List<uint>();
@@ -48,20 +52,20 @@ public class TitleService
 
         if (titleSheet == null)
         {
-            log.Error("TitleService: titleSheet is null");
+            log.Error("TitleCollector: titleSheet is null");
             return unlockedIds;
         }
 
         var uiState = UIState.Instance();
         if (uiState == null)
         {
-            log.Error("TitleService: uiState is null");
+            log.Error("TitleCollector: uiState is null");
             return unlockedIds;
         }
 
         if (!uiState->TitleList.DataReceived)
         {
-            log.Warning("TitleService: Title data not yet received, requesting...");
+            log.Warning("TitleCollector: Title data not yet received, requesting...");
             uiState->TitleList.RequestTitleList();
             return unlockedIds;
         }

@@ -2,7 +2,7 @@
     "Author": "izaghar",
     "Name": "Allagan Sync",
     "Punchline": "Sync your FFXIV collections with allagan.app",
-    "Description": "Allagan Sync - Track and sync your mounts, minions, emotes, orchestrions, and titles",
+    "Description": "Allagan Sync - Sync your mounts, minions, orchestrion rolls, emotes, titles, achievements, bardings, Triple Triad cards, fashion accessories, facewear, sightseeing log, fish, Blue Mage spells, and character customizations with allagan.app.",
     "IconUrl": "https://raw.githubusercontent.com/allagan-app/allagan-sync/main/assets/icon.png",
     "ApplicableVersion": "any",
     "Tags": [

@@ -9,34 +9,34 @@ namespace AllaganSync.UI;
 
 public class MainWindow : Window, IDisposable
 {
-    private readonly ConfigurationService configService;
+    private readonly InfoTab infoTab;
     private readonly CollectionTab collectionTab;
-    private readonly ApiTokenTab apiTokenTab;
+    private readonly EventsTab eventsTab;
+#if DEBUG
+    private readonly DebugTab debugTab;
+#endif
 
-    public MainWindow(ConfigurationService configService, AllaganSyncService syncService)
+    public MainWindow(ConfigurationService configService, AllaganSyncService syncService, AllaganApiClient apiClient, EventTrackingService eventTrackingService, Action? openSettings = null)
         : base("Allagan Sync###AllaganSyncMain")
     {
-        this.configService = configService;
-        collectionTab = new CollectionTab(configService, syncService);
-        apiTokenTab = new ApiTokenTab(configService);
+        infoTab = new InfoTab(configService, openSettings);
+        collectionTab = new CollectionTab(configService, syncService, openSettings);
+        eventsTab = new EventsTab(configService, eventTrackingService, openSettings);
+#if DEBUG
+        debugTab = new DebugTab(apiClient, configService);
+#endif
 
-        Size = new Vector2(500, 350);
+        Size = new Vector2(500, 400);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
     public override void Draw()
     {
-        if (!configService.IsLoggedIn)
-        {
-            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Please log in to a character first.");
-            return;
-        }
-
         if (ImGui.BeginTabBar("MainTabs"))
         {
             if (ImGui.BeginTabItem("Info"))
             {
-                InfoTab.Draw();
+                infoTab.Draw();
                 ImGui.EndTabItem();
             }
 
@@ -46,11 +46,19 @@ public class MainWindow : Window, IDisposable
                 ImGui.EndTabItem();
             }
 
-            if (ImGui.BeginTabItem("API Token"))
+            if (ImGui.BeginTabItem("Events"))
             {
-                apiTokenTab.Draw();
+                eventsTab.Draw();
                 ImGui.EndTabItem();
             }
+
+#if DEBUG
+            if (ImGui.BeginTabItem("Debug"))
+            {
+                debugTab.Draw();
+                ImGui.EndTabItem();
+            }
+#endif
 
             ImGui.EndTabBar();
         }

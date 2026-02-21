@@ -4,18 +4,16 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using Lumina.Excel.Sheets;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class FishService
+public class FishCollector(IDataManager dataManager) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
+    public string CollectionKey => "fish";
+    public string DisplayName => "Fish";
+    public bool NeedsDataRequest => false;
+    public bool IsDataReady => true;
+    public void RequestData() { }
 
-    public FishService(IDataManager dataManager)
-    {
-        this.dataManager = dataManager;
-    }
-
-    // Validator: FishParameter is valid if it has a valid Item with a name
     private bool IsValid(FishParameter fish)
     {
         var itemId = fish.Item.RowId;
@@ -30,7 +28,6 @@ public class FishService
         return item.HasValue && !item.Value.Name.IsEmpty;
     }
 
-    // Collectable filter: IsFishCaught only works for FishParameter rows where IsInLog is true
     private static bool IsCollectable(FishParameter fish)
     {
         return fish.IsInLog;

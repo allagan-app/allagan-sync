@@ -2,7 +2,9 @@ using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using AllaganSync.Collecting.Collectors;
 using AllaganSync.Services;
+using AllaganSync.Tracking.Trackers;
 using AllaganSync.UI;
 
 namespace AllaganSync;
@@ -17,11 +19,12 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IClientState clientState;
     private readonly IPlayerState playerState;
     private readonly IFramework framework;
-    private readonly TitleService titleService;
-    private readonly AchievementService achievementService;
+    private readonly AllaganApiClient apiClient;
     private readonly AllaganSyncService syncService;
+    private readonly EventTrackingService eventTrackingService;
     private readonly WindowSystem windowSystem = new("AllaganSync");
     private readonly MainWindow mainWindow;
+    private readonly SettingsWindow settingsWindow;
     private ulong lastContentId;
 
     public Plugin(
@@ -32,7 +35,8 @@ public sealed class Plugin : IDalamudPlugin
         IDataManager dataManager,
         IClientState clientState,
         IFramework framework,
-        IUnlockState unlockState)
+        IUnlockState unlockState,
+        IGameInteropProvider gameInteropProvider)
     {
         this.pluginInterface = pluginInterface;
         this.commandManager = commandManager;
@@ -43,27 +47,41 @@ public sealed class Plugin : IDalamudPlugin
         lastContentId = playerState.ContentId;
 
         var configService = new ConfigurationService(pluginInterface, playerState);
-        var orchestrionService = new OrchestrionService(dataManager, unlockState);
-        var emoteService = new EmoteService(dataManager, unlockState, playerState);
-        titleService = new TitleService(dataManager, log);
-        var mountService = new MountService(dataManager, unlockState);
-        var minionService = new MinionService(dataManager, unlockState);
-        achievementService = new AchievementService(dataManager, log);
-        var bardingService = new BardingService(dataManager, unlockState);
-        var tripleTriadCardService = new TripleTriadCardService(dataManager, unlockState);
-        var fashionAccessoryService = new FashionAccessoryService(dataManager, unlockState);
-        var facewearService = new FacewearService(dataManager, unlockState);
-        var vistaService = new VistaService(dataManager);
-        var fishService = new FishService(dataManager);
-        var blueMageSpellService = new BlueMageSpellService(dataManager, unlockState);
-        var characterCustomizationService = new CharacterCustomizationService(dataManager, unlockState);
-        syncService = new AllaganSyncService(log, configService, orchestrionService, emoteService, titleService, mountService, minionService, achievementService, bardingService, tripleTriadCardService, fashionAccessoryService, facewearService, vistaService, fishService, blueMageSpellService, characterCustomizationService);
+        apiClient = new AllaganApiClient(log, configService);
+        syncService = new AllaganSyncService(log, configService, apiClient);
 
-        mainWindow = new MainWindow(configService, syncService);
+        // Register collectors (order determines UI display order)
+        syncService.RegisterCollector(new OrchestrionCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new EmoteCollector(dataManager, unlockState, playerState));
+        syncService.RegisterCollector(new TitleCollector(dataManager, log));
+        syncService.RegisterCollector(new MountCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new MinionCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new AchievementCollector(dataManager, log));
+        syncService.RegisterCollector(new BardingCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new TripleTriadCardCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new FashionAccessoryCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new FacewearCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new VistaCollector(dataManager));
+        syncService.RegisterCollector(new FishCollector(dataManager));
+        syncService.RegisterCollector(new BlueMageSpellCollector(dataManager, unlockState));
+        syncService.RegisterCollector(new CharacterCustomizationCollector(dataManager, unlockState));
+
+        // Event tracking
+        eventTrackingService = new EventTrackingService(log, configService, apiClient);
+        var desynthTracker = new DesynthTracker(log, dataManager, gameInteropProvider);
+        eventTrackingService.RegisterTracker(desynthTracker);
+        eventTrackingService.UpdateTrackerStates();
+
+        if (clientState.IsLoggedIn)
+            eventTrackingService.Start();
+
+        settingsWindow = new SettingsWindow(configService, eventTrackingService);
+        mainWindow = new MainWindow(configService, syncService, apiClient, eventTrackingService, () => settingsWindow.IsOpen = true);
         windowSystem.AddWindow(mainWindow);
+        windowSystem.AddWindow(settingsWindow);
 
         pluginInterface.UiBuilder.Draw += windowSystem.Draw;
-        pluginInterface.UiBuilder.OpenConfigUi += ToggleMainWindow;
+        pluginInterface.UiBuilder.OpenConfigUi += ToggleSettingsWindow;
         pluginInterface.UiBuilder.OpenMainUi += ToggleMainWindow;
         framework.Update += OnFrameworkUpdate;
         commandManager.AddHandler(MainCommand, new CommandInfo(OnMainCommand)
@@ -76,15 +94,27 @@ public sealed class Plugin : IDalamudPlugin
 
         // If already logged in, request now
         if (clientState.IsLoggedIn)
-            RequestData();
+            syncService.RequestData();
 
         log.Info("Allagan Sync loaded.");
     }
 
+    private void RefreshDisplayData()
+    {
+        syncService.RequestData();
+        syncService.RefreshCounts();
+    }
+
+    private void OnCharacterChanged()
+    {
+        RefreshDisplayData();
+        eventTrackingService.UpdateTrackerStates();
+    }
+
     private void OnLogin()
     {
-        RequestData();
-        syncService.RefreshCounts();
+        OnCharacterChanged();
+        eventTrackingService.Start();
     }
 
     private void OnFrameworkUpdate(IFramework _)
@@ -95,16 +125,7 @@ public sealed class Plugin : IDalamudPlugin
 
         lastContentId = currentContentId;
         if (currentContentId != 0)
-        {
-            RequestData();
-            syncService.RefreshCounts();
-        }
-    }
-
-    private void RequestData()
-    {
-        titleService.RequestTitleData();
-        achievementService.RequestAchievementData();
+            OnCharacterChanged();
     }
 
     public void ToggleMainWindow()
@@ -113,10 +134,12 @@ public sealed class Plugin : IDalamudPlugin
         mainWindow.Toggle();
 
         if (!wasOpen && mainWindow.IsOpen)
-        {
-            RequestData();
-            syncService.RefreshCounts();
-        }
+            RefreshDisplayData();
+    }
+
+    private void ToggleSettingsWindow()
+    {
+        settingsWindow.Toggle();
     }
 
     private void OnMainCommand(string command, string args)
@@ -130,8 +153,7 @@ public sealed class Plugin : IDalamudPlugin
             return;
 
         mainWindow.IsOpen = true;
-        RequestData();
-        syncService.RefreshCounts();
+        RefreshDisplayData();
     }
 
     public void Dispose()
@@ -139,13 +161,15 @@ public sealed class Plugin : IDalamudPlugin
         clientState.Login -= OnLogin;
 
         pluginInterface.UiBuilder.Draw -= windowSystem.Draw;
-        pluginInterface.UiBuilder.OpenConfigUi -= ToggleMainWindow;
+        pluginInterface.UiBuilder.OpenConfigUi -= ToggleSettingsWindow;
         pluginInterface.UiBuilder.OpenMainUi -= ToggleMainWindow;
         framework.Update -= OnFrameworkUpdate;
         commandManager.RemoveHandler(MainCommand);
 
         windowSystem.RemoveAllWindows();
         mainWindow.Dispose();
+        eventTrackingService.Dispose();
+        apiClient.Dispose();
 
         log.Info("Allagan Sync unloaded.");
     }

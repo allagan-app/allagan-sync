@@ -3,18 +3,15 @@ using System.Linq;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class FacewearService
+public class FacewearCollector(IDataManager dataManager, IUnlockState unlockState) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
-    private readonly IUnlockState unlockState;
-
-    public FacewearService(IDataManager dataManager, IUnlockState unlockState)
-    {
-        this.dataManager = dataManager;
-        this.unlockState = unlockState;
-    }
+    public string CollectionKey => "facewears";
+    public string DisplayName => "Facewear";
+    public bool NeedsDataRequest => false;
+    public bool IsDataReady => true;
+    public void RequestData() { }
 
     private bool IsValid(GlassesStyle glassesStyle)
     {
@@ -59,9 +56,7 @@ public class FacewearService
             if (!glassesSheet.TryGetRow(glassesId, out var glassesRow))
                 continue;
 
-            var isUnlocked = unlockState.IsGlassesUnlocked(glassesRow);
-
-            if (isUnlocked)
+            if (unlockState.IsGlassesUnlocked(glassesRow))
             {
                 unlockedIds.Add(row.RowId);
             }

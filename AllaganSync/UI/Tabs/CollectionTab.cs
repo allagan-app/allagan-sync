@@ -1,6 +1,8 @@
+using System;
 using System.Numerics;
-using Dalamud.Bindings.ImGui;
 using AllaganSync.Services;
+using AllaganSync.UI;
+using Dalamud.Bindings.ImGui;
 
 namespace AllaganSync.UI.Tabs;
 
@@ -8,19 +10,27 @@ public class CollectionTab
 {
     private readonly ConfigurationService configService;
     private readonly AllaganSyncService syncService;
+    private readonly Action? openSettings;
     private bool hasLoadedCounts;
 
-    public CollectionTab(ConfigurationService configService, AllaganSyncService syncService)
+    public CollectionTab(ConfigurationService configService, AllaganSyncService syncService, Action? openSettings = null)
     {
         this.configService = configService;
         this.syncService = syncService;
+        this.openSettings = openSettings;
     }
 
     public void Draw()
     {
-        var charConfig = configService.CurrentCharacter;
-        if (charConfig == null)
+        ImGui.TextWrapped("Shows your in-game unlock progress and syncs it with your allagan.app profile. " +
+            "Toggle individual collections to control what gets synced.");
+        ImGui.Spacing();
+        ImGui.Spacing();
+
+        if (!SetupGuard.Draw(configService, openSettings))
             return;
+
+        var charConfig = configService.CurrentCharacter!;
 
         // Load counts once when tab is first drawn
         if (!hasLoadedCounts)
@@ -42,123 +52,31 @@ public class CollectionTab
             ImGui.TableSetupColumn("Sync", ImGuiTableColumnFlags.WidthFixed, 50);
             ImGui.TableHeadersRow();
 
-            // Orchestrions
-            var orchCounts = syncService.OrchestrionCounts;
-            if (DrawCollectionRow("Orchestrions", orchCounts.unlocked, orchCounts.total, charConfig.SyncOrchestrions, out var syncOrch))
+            foreach (var collector in syncService.Collectors)
             {
-                charConfig.SyncOrchestrions = syncOrch;
-                configService.Save();
-            }
+                var counts = syncService.GetCounts(collector.CollectionKey);
+                string? warning = null;
+                string? tooltip = null;
 
-            // Emotes
-            var emoteCounts = syncService.EmoteCounts;
-            if (DrawCollectionRow("Emotes", emoteCounts.unlocked, emoteCounts.total, charConfig.SyncEmotes, out var syncEmotes))
-            {
-                charConfig.SyncEmotes = syncEmotes;
-                configService.Save();
-            }
+                if (collector.NeedsDataRequest && !collector.IsDataReady)
+                {
+                    warning = "Data not loaded";
+                    tooltip = $"Open the {collector.DisplayName} window in-game to load the data.";
+                }
 
-            // Titles
-            var titleCounts = syncService.TitleCounts;
-            if (DrawCollectionRow("Titles", titleCounts.unlocked, titleCounts.total, charConfig.SyncTitles, out var syncTitles))
-            {
-                charConfig.SyncTitles = syncTitles;
-                configService.Save();
-            }
-
-            // Mounts
-            var mountCounts = syncService.MountCounts;
-            if (DrawCollectionRow("Mounts", mountCounts.unlocked, mountCounts.total, charConfig.SyncMounts, out var syncMounts))
-            {
-                charConfig.SyncMounts = syncMounts;
-                configService.Save();
-            }
-
-            // Minions
-            var minionCounts = syncService.MinionCounts;
-            if (DrawCollectionRow("Minions", minionCounts.unlocked, minionCounts.total, charConfig.SyncMinions, out var syncMinions))
-            {
-                charConfig.SyncMinions = syncMinions;
-                configService.Save();
-            }
-
-            // Achievements
-            var achievementCounts = syncService.AchievementCounts;
-            if (DrawCollectionRow("Achievements", achievementCounts.unlocked, achievementCounts.total, charConfig.SyncAchievements, out var syncAchievements, !syncService.AchievementsLoaded ? "Open achievements menu to load" : null))
-            {
-                charConfig.SyncAchievements = syncAchievements;
-                configService.Save();
-            }
-
-            // Bardings
-            var bardingCounts = syncService.BardingCounts;
-            if (DrawCollectionRow("Bardings", bardingCounts.unlocked, bardingCounts.total, charConfig.SyncBardings, out var syncBardings))
-            {
-                charConfig.SyncBardings = syncBardings;
-                configService.Save();
-            }
-
-            // Triple Triad Cards
-            var tripleTriadCardCounts = syncService.TripleTriadCardCounts;
-            if (DrawCollectionRow("Triple Triad Cards", tripleTriadCardCounts.unlocked, tripleTriadCardCounts.total, charConfig.SyncTripleTriadCards, out var syncTripleTriadCards))
-            {
-                charConfig.SyncTripleTriadCards = syncTripleTriadCards;
-                configService.Save();
-            }
-
-            // Fashion Accessories
-            var fashionAccessoryCounts = syncService.FashionAccessoryCounts;
-            if (DrawCollectionRow("Fashion Accessories", fashionAccessoryCounts.unlocked, fashionAccessoryCounts.total, charConfig.SyncFashionAccessories, out var syncFashionAccessories))
-            {
-                charConfig.SyncFashionAccessories = syncFashionAccessories;
-                configService.Save();
-            }
-
-            // Facewear
-            var facewearCounts = syncService.FacewearCounts;
-            if (DrawCollectionRow("Facewear", facewearCounts.unlocked, facewearCounts.total, charConfig.SyncFacewear, out var syncFacewear))
-            {
-                charConfig.SyncFacewear = syncFacewear;
-                configService.Save();
-            }
-
-            // Vistas
-            var vistaCounts = syncService.VistaCounts;
-            if (DrawCollectionRow("Vistas", vistaCounts.unlocked, vistaCounts.total, charConfig.SyncVistas, out var syncVistas))
-            {
-                charConfig.SyncVistas = syncVistas;
-                configService.Save();
-            }
-
-            // Fish
-            var fishCounts = syncService.FishCounts;
-            if (DrawCollectionRow("Fish", fishCounts.unlocked, fishCounts.total, charConfig.SyncFish, out var syncFish))
-            {
-                charConfig.SyncFish = syncFish;
-                configService.Save();
-            }
-
-            // Blue Mage Spells
-            var blueMageSpellCounts = syncService.BlueMageSpellCounts;
-            if (DrawCollectionRow("Blue Mage Spells", blueMageSpellCounts.unlocked, blueMageSpellCounts.total, charConfig.SyncBlueMageSpells, out var syncBlueMageSpells))
-            {
-                charConfig.SyncBlueMageSpells = syncBlueMageSpells;
-                configService.Save();
-            }
-
-            // Character Customizations (Hairstyles, Face Paints)
-            var characterCustomizationCounts = syncService.CharacterCustomizationCounts;
-            if (DrawCollectionRow("Hairstyles & Face Paints", characterCustomizationCounts.unlocked, characterCustomizationCounts.total, charConfig.SyncCharacterCustomizations, out var syncCharacterCustomizations))
-            {
-                charConfig.SyncCharacterCustomizations = syncCharacterCustomizations;
-                configService.Save();
+                var enabled = charConfig.IsCollectionEnabled(collector.CollectionKey);
+                if (DrawCollectionRow(collector.DisplayName, counts.unlocked, counts.total, enabled, out var newValue, warning, tooltip))
+                {
+                    charConfig.SetCollectionEnabled(collector.CollectionKey, newValue);
+                    configService.Save();
+                }
             }
 
             ImGui.EndTable();
         }
     }
 
-    private static bool DrawCollectionRow(string name, int unlocked, int total, bool syncEnabled, out bool newValue, string? warning = null)
+    private static bool DrawCollectionRow(string name, int unlocked, int total, bool syncEnabled, out bool newValue, string? warning = null, string? tooltip = null)
     {
         ImGui.TableNextRow();
 
@@ -168,6 +86,8 @@ public class CollectionTab
         {
             ImGui.SameLine();
             ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), $"({warning})");
+            if (tooltip != null && ImGui.IsItemHovered())
+                ImGui.SetTooltip(tooltip);
         }
 
         ImGui.TableNextColumn();
@@ -204,8 +124,6 @@ public class CollectionTab
             ImGui.BeginDisabled();
             ImGui.Button("Sync");
             ImGui.EndDisabled();
-            ImGui.SameLine();
-            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Set API token first");
         }
         else if (syncService.IsSyncing)
         {

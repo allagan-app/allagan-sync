@@ -4,17 +4,34 @@ using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
 using AchievementState = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class AchievementService
+public class AchievementCollector(IDataManager dataManager, IPluginLog log) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
-    private readonly IPluginLog log;
+    public string CollectionKey => "achievements";
+    public string DisplayName => "Achievements";
+    public bool NeedsDataRequest => true;
 
-    public AchievementService(IDataManager dataManager, IPluginLog log)
+    public unsafe bool IsDataReady
     {
-        this.dataManager = dataManager;
-        this.log = log;
+        get
+        {
+            var achievement = AchievementState.Instance();
+            return achievement != null && achievement->IsLoaded();
+        }
+    }
+
+    public unsafe void RequestData()
+    {
+        var achievement = AchievementState.Instance();
+        if (achievement == null)
+            return;
+
+        if (!achievement->IsLoaded())
+        {
+            log.Info("AchievementCollector: Requesting achievement data from server...");
+            achievement->RequestAchievementProgress(0);
+        }
     }
 
     private bool IsValidAchievementKind(uint? kindId)
@@ -57,28 +74,6 @@ public class AchievementService
         return sheet?.Count(IsValid) ?? 0;
     }
 
-    public unsafe bool IsLoaded
-    {
-        get
-        {
-            var achievement = AchievementState.Instance();
-            return achievement != null && achievement->IsLoaded();
-        }
-    }
-
-    public unsafe void RequestAchievementData()
-    {
-        var achievement = AchievementState.Instance();
-        if (achievement == null)
-            return;
-
-        if (!achievement->IsLoaded())
-        {
-            log.Info("AchievementService: Requesting achievement data from server...");
-            achievement->RequestAchievementProgress(0);
-        }
-    }
-
     public unsafe List<uint> GetUnlockedIds()
     {
         var unlockedIds = new List<uint>();
@@ -86,20 +81,20 @@ public class AchievementService
 
         if (achievementSheet == null)
         {
-            log.Error("AchievementService: achievementSheet is null");
+            log.Error("AchievementCollector: achievementSheet is null");
             return unlockedIds;
         }
 
         var achievement = AchievementState.Instance();
         if (achievement == null)
         {
-            log.Error("AchievementService: achievement instance is null");
+            log.Error("AchievementCollector: achievement instance is null");
             return unlockedIds;
         }
 
         if (!achievement->IsLoaded())
         {
-            log.Warning("AchievementService: Achievement data not yet loaded, requesting...");
+            log.Warning("AchievementCollector: Achievement data not yet loaded, requesting...");
             achievement->RequestAchievementProgress(0);
             return unlockedIds;
         }

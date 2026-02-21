@@ -3,26 +3,21 @@ using System.Linq;
 using Dalamud.Plugin.Services;
 using Lumina.Excel.Sheets;
 
-namespace AllaganSync.Services;
+namespace AllaganSync.Collecting.Collectors;
 
-public class CharacterCustomizationService
+public class CharacterCustomizationCollector(IDataManager dataManager, IUnlockState unlockState) : ICollectionCollector
 {
-    private readonly IDataManager dataManager;
-    private readonly IUnlockState unlockState;
+    public string CollectionKey => "character_customizations";
+    public string DisplayName => "Hairstyles & Face Paints";
+    public bool NeedsDataRequest => false;
+    public bool IsDataReady => true;
+    public void RequestData() { }
 
-    public CharacterCustomizationService(IDataManager dataManager, IUnlockState unlockState)
-    {
-        this.dataManager = dataManager;
-        this.unlockState = unlockState;
-    }
-
-    // Face paint is RowId >= 2401
     private static bool IsFacePaint(CharaMakeCustomize row)
     {
         return row.RowId >= 2401;
     }
 
-    // Check if item is valid (has a name)
     private bool IsValidItem(uint itemId)
     {
         var itemSheet = dataManager.GetExcelSheet<Item>();
@@ -33,7 +28,6 @@ public class CharacterCustomizationService
         return item.HasValue && !item.Value.Name.IsEmpty;
     }
 
-    // Validator: FeatureID > 0 and (Item == 0 or Item valid)
     private bool IsValid(CharaMakeCustomize row)
     {
         if (row.FeatureID == 0)
@@ -43,7 +37,6 @@ public class CharacterCustomizationService
         return itemId == 0 || IsValidItem(itemId);
     }
 
-    // Group key: FeatureID + IsFacePaint
     private static string GetGroupKey(CharaMakeCustomize row)
     {
         return $"{row.FeatureID}-{(IsFacePaint(row) ? "facepaint" : "hairstyle")}";
@@ -55,12 +48,10 @@ public class CharacterCustomizationService
         if (sheet == null)
             return 0;
 
-        var groups = sheet
+        return sheet
             .Where(IsValid)
             .GroupBy(GetGroupKey)
-            .ToList();
-
-        return groups.Count;
+            .Count();
     }
 
     public List<uint> GetUnlockedIds()
@@ -71,7 +62,6 @@ public class CharacterCustomizationService
         if (sheet == null)
             return unlockedIds;
 
-        // Group by FeatureID + type, use minimum RowId as the canonical ID
         var groups = sheet
             .Where(IsValid)
             .GroupBy(GetGroupKey)
@@ -83,10 +73,6 @@ public class CharacterCustomizationService
 
         foreach (var group in groups)
         {
-            // A group is unlocked if ANY row in the group is unlocked
-            // A row is unlocked if:
-            // - HintItem == 0 (base hairstyle/facepaint that everyone has), OR
-            // - IsCharaMakeCustomizeUnlocked returns true (purchasable and unlocked)
             var isUnlocked = group.Rows.Any(row =>
                 row.HintItem.RowId == 0 || unlockState.IsCharaMakeCustomizeUnlocked(row));
 

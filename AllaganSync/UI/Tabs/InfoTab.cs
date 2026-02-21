@@ -1,20 +1,50 @@
+using System;
+using AllaganSync.Services;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Utility;
 
 namespace AllaganSync.UI.Tabs;
 
-public static class InfoTab
+public class InfoTab
 {
-    public static void Draw()
+    private const string AllaganUrl = "https://allagan.app";
+
+    private readonly ConfigurationService configService;
+    private readonly Action? openSettings;
+
+    public InfoTab(ConfigurationService configService, Action? openSettings = null)
     {
-        ImGui.Text("Getting Started");
+        this.configService = configService;
+        this.openSettings = openSettings;
+    }
+
+    public void Draw()
+    {
+        ImGui.Text("Allagan Sync");
         ImGui.Separator();
         ImGui.Spacing();
 
-        ImGui.TextWrapped("Welcome to Allagan Sync! This plugin helps you track your collections and sync them with allagan.app.");
+        ImGui.TextWrapped("This plugin syncs your in-game collections with allagan.app — " +
+            "mounts, minions, orchestrion rolls, emotes, titles, achievements, bardings, " +
+            "Triple Triad cards, fashion accessories, facewear, sightseeing log, fish, " +
+            "Blue Mage spells, and character customizations.");
 
         ImGui.Spacing();
         ImGui.Spacing();
 
-        ImGui.TextWrapped("To get started, set your API token in the 'API Token' tab.");
+        if (!SetupGuard.Draw(configService, openSettings))
+        {
+            ImGui.Spacing();
+            ImGui.TextWrapped("You can generate a token on the website:");
+            ImGui.Spacing();
+            if (ImGui.SmallButton(AllaganUrl))
+                Util.OpenLink(AllaganUrl);
+            return;
+        }
+
+        ImGui.TextDisabled("You're all set! Use the Collection tab to sync your data.");
+        ImGui.Spacing();
+        if (ImGui.SmallButton(AllaganUrl))
+            Util.OpenLink(AllaganUrl);
     }
 }
