@@ -70,6 +70,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService = new EventTrackingService(log, configService, apiClient);
         var desynthTracker = new DesynthTracker(log, dataManager, gameInteropProvider);
         eventTrackingService.RegisterTracker(desynthTracker);
+        var retainerMissionTracker = new RetainerMissionTracker(log, dataManager, gameInteropProvider);
+        eventTrackingService.RegisterTracker(retainerMissionTracker);
         eventTrackingService.UpdateTrackerStates();
 
         if (clientState.IsLoggedIn)

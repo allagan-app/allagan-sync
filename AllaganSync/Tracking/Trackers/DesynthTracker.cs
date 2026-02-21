@@ -81,14 +81,12 @@ public unsafe class DesynthTracker : IGameEventTracker
             if (itemSheet == null)
                 return;
 
-            // Look up the item to get its repair class job (= desynth class job)
-            uint classJobId = 0;
             float desynthLevel = 0;
 
             var item = itemSheet.GetRowOrDefault(sourceItemId);
             if (item != null)
             {
-                classJobId = item.Value.ClassJobRepair.RowId;
+                var classJobId = item.Value.ClassJobRepair.RowId;
                 desynthLevel = PlayerState.Instance()->GetDesynthesisLevel(classJobId);
             }
 
@@ -113,7 +111,6 @@ public unsafe class DesynthTracker : IGameEventTracker
             var payload = new DesynthResultPayload
             {
                 SourceItemId = sourceItemId,
-                ClassJobId = classJobId,
                 DesynthLevel = desynthLevel,
                 Results = results,
             };

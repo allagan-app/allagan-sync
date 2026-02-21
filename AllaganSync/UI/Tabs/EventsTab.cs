@@ -208,10 +208,6 @@ public class EventsTab
         ImGui.SameLine();
         ImGui.Text(desynth.SourceItemId.ToString());
 
-        ImGui.TextDisabled("Class Job ID:");
-        ImGui.SameLine();
-        ImGui.Text(desynth.ClassJobId.ToString());
-
         ImGui.TextDisabled("Desynth Level:");
         ImGui.SameLine();
         ImGui.Text($"{desynth.DesynthLevel:F1}");

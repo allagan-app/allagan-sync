@@ -8,9 +8,6 @@ public class DesynthResultPayload
     [JsonPropertyName("source_item_id")]
     public uint SourceItemId { get; set; }
 
-    [JsonPropertyName("class_job_id")]
-    public uint ClassJobId { get; set; }
-
     [JsonPropertyName("desynth_level")]
     public float DesynthLevel { get; set; }
 
