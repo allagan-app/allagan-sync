@@ -22,6 +22,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly AllaganApiClient apiClient;
     private readonly AllaganSyncService syncService;
     private readonly EventTrackingService eventTrackingService;
+    private readonly ContainerOpenTracker containerOpenTracker;
     private readonly WindowSystem windowSystem = new("AllaganSync");
     private readonly MainWindow mainWindow;
     private readonly SettingsWindow settingsWindow;
@@ -35,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
         IDataManager dataManager,
         IClientState clientState,
         IFramework framework,
+        IGameInventory gameInventory,
         IUnlockState unlockState,
         IGameInteropProvider gameInteropProvider)
     {
@@ -72,6 +74,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(desynthTracker);
         var retainerMissionTracker = new RetainerMissionTracker(log, dataManager, gameInteropProvider);
         eventTrackingService.RegisterTracker(retainerMissionTracker);
+        containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
+        eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
 
         if (clientState.IsLoggedIn)
@@ -93,10 +97,14 @@ public sealed class Plugin : IDalamudPlugin
 
         // Request data when character logs in
         clientState.Login += OnLogin;
+        clientState.Logout += OnLogout;
 
         // If already logged in, request now
         if (clientState.IsLoggedIn)
+        {
             syncService.RequestData();
+            _ = containerOpenTracker.LoadContainerListAsync();
+        }
 
         log.Info("Allagan Sync loaded.");
     }
@@ -117,6 +125,13 @@ public sealed class Plugin : IDalamudPlugin
     {
         OnCharacterChanged();
         eventTrackingService.Start();
+        _ = containerOpenTracker.LoadContainerListAsync();
+    }
+
+    private void OnLogout(int type, int code)
+    {
+        containerOpenTracker.FlushAndClear();
+        _ = eventTrackingService.FlushAsync();
     }
 
     private void OnFrameworkUpdate(IFramework _)
@@ -161,6 +176,7 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         clientState.Login -= OnLogin;
+        clientState.Logout -= OnLogout;
 
         pluginInterface.UiBuilder.Draw -= windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi -= ToggleSettingsWindow;

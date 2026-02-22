@@ -23,8 +23,6 @@ public class EventsTab
 
     public void Draw()
     {
-        DrawDescription();
-
         if (!SetupGuard.Draw(configService, openSettings))
             return;
 
@@ -52,18 +50,6 @@ public class EventsTab
         ImGui.Spacing();
 
         DrawSendHistory();
-    }
-
-    // ── Description ───────────────────────────────────────────────────
-
-    private static void DrawDescription()
-    {
-        ImGui.TextWrapped("When enabled, the plugin automatically captures certain in-game activities " +
-            "such as desynthesis results and contributes them to Allagan's community-driven " +
-            "statistics like drop rates. Your data is only used anonymously in aggregate statistics.");
-
-        ImGui.Spacing();
-        ImGui.Spacing();
     }
 
     // ── Backoff Banner ───────────────────────────────────────────────────

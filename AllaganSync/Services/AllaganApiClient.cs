@@ -13,7 +13,7 @@ public class AllaganApiClient : IDisposable
 {
     private readonly IPluginLog log;
     private readonly ConfigurationService configService;
-    private readonly HttpClient httpClient = new();
+    private readonly HttpClient httpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
 
     private const string ProductionBaseUrl = "https://allagan.app";
 
@@ -55,6 +55,23 @@ public class AllaganApiClient : IDisposable
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        return await httpClient.SendAsync(request, cancellationToken);
+    }
+
+    public async Task<HttpResponseMessage> GetAsync(string endpoint, CancellationToken cancellationToken = default)
+    {
+        var baseUrl = BaseUrl;
+        var url = endpoint.StartsWith("/")
+            ? $"{baseUrl}{endpoint}"
+            : $"{baseUrl}/{endpoint}";
+
+#if DEBUG
+        log.Info($"GET {url}");
+#endif
+
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         return await httpClient.SendAsync(request, cancellationToken);
     }
