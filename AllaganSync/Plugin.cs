@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
@@ -107,7 +108,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             syncService.RequestData();
             _ = containerOpenTracker.LoadContainerListAsync();
-            _ = eventTrackingService.LoadAbilitiesAsync().ContinueWith(_ => eventTrackingService.UpdateTrackerStates());
+            _ = LoadAbilitiesAndUpdateStatesAsync();
         }
 
         log.Info("Allagan Sync loaded.");
@@ -136,6 +137,19 @@ public sealed class Plugin : IDalamudPlugin
         OnCharacterChanged();
         eventTrackingService.Start();
         _ = containerOpenTracker.LoadContainerListAsync();
+    }
+
+    private async Task LoadAbilitiesAndUpdateStatesAsync()
+    {
+        try
+        {
+            await eventTrackingService.LoadAbilitiesAsync();
+            eventTrackingService.UpdateTrackerStates();
+        }
+        catch (Exception ex)
+        {
+            log.Error($"Failed to load abilities: {ex}");
+        }
     }
 
     private void OnLogout(int type, int code)

@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using AllaganSync.Models;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
@@ -13,7 +13,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
 {
     private readonly IPluginLog log;
     private readonly IClientState clientState;
-    private readonly HashSet<string> seenSpawns = [];
+    private readonly ConcurrentDictionary<string, byte> seenSpawns = new();
     private Hook<PacketDispatcher.Delegates.HandleSpawnNpcPacket>? spawnNpcHook;
 
     public string EventKey => "monster_spawn";
@@ -62,7 +62,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
                     var baseId = packet->Common.BaseId;
                     var hash = $"{baseId}_{clientState.TerritoryType}_{packet->Common.LayoutId}";
 
-                    if (seenSpawns.Add(hash))
+                    if (seenSpawns.TryAdd(hash, 0))
                     {
                         var payload = new MonsterSpawnPayload
                         {

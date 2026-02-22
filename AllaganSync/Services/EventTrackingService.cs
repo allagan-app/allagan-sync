@@ -48,7 +48,7 @@ public class EventTrackingService : IDisposable
     private string? backoffReason;
 
     // Token abilities (loaded from /api/v1/character/me)
-    private string[] tokenAbilities = [];
+    private volatile string[] tokenAbilities = [];
 
     public int PendingCount => bufferCount;
     public bool IsRunning => isRunning;
