@@ -20,6 +20,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
     public string DisplayName => "Monster Spawns";
     public bool IsAvailable { get; }
     public bool IsEnabled { get; set; }
+    public string? RequiredAbility => "mapping:contribute";
 
     public event Action<TrackedEvent>? EventTracked;
 
@@ -67,6 +68,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
                         {
                             BnpcBaseId = baseId,
                             TerritoryTypeId = clientState.TerritoryType,
+                            LayoutId = packet->Common.LayoutId,
                             PositionX = packet->Common.Position.X,
                             PositionY = packet->Common.Position.Y,
                             PositionZ = packet->Common.Position.Z,

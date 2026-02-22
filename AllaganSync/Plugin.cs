@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
@@ -106,6 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             syncService.RequestData();
             _ = containerOpenTracker.LoadContainerListAsync();
+            _ = eventTrackingService.LoadAbilitiesAsync().ContinueWith(_ => eventTrackingService.UpdateTrackerStates());
         }
 
         log.Info("Allagan Sync loaded.");
@@ -125,6 +127,12 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnLogin()
     {
+        _ = OnLoginAsync();
+    }
+
+    private async Task OnLoginAsync()
+    {
+        await eventTrackingService.LoadAbilitiesAsync();
         OnCharacterChanged();
         eventTrackingService.Start();
         _ = containerOpenTracker.LoadContainerListAsync();

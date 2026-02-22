@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AllaganSync.Models;
@@ -34,7 +35,7 @@ public class EventTrackingService : IDisposable
 
     private const string IngestEndpoint = "/api/v1/character/events/ingest";
     private const int MaxBufferSize = 100;
-    private const int FlushThreshold = 20;
+    private const int FlushThreshold = 50;
     private const int FlushIntervalSeconds = 30;
     private const int MaxSendHistory = 20;
     private const int InitialBackoffSeconds = 30;
@@ -45,6 +46,9 @@ public class EventTrackingService : IDisposable
     private int currentBackoffSeconds;
     private DateTime? backoffUntil;
     private string? backoffReason;
+
+    // Token abilities (loaded from /api/v1/character/me)
+    private string[] tokenAbilities = [];
 
     public int PendingCount => bufferCount;
     public bool IsRunning => isRunning;
@@ -73,6 +77,25 @@ public class EventTrackingService : IDisposable
         tracker.EventTracked += Enqueue;
     }
 
+    public async Task LoadAbilitiesAsync()
+    {
+        try
+        {
+            tokenAbilities = await apiClient.GetMeAbilitiesAsync();
+            log.Info($"Loaded {tokenAbilities.Length} token abilities.");
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"Failed to load token abilities: {ex.Message}");
+            tokenAbilities = [];
+        }
+    }
+
+    public bool HasAbility(string ability)
+    {
+        return tokenAbilities.Contains("*") || tokenAbilities.Contains(ability);
+    }
+
     public void UpdateTrackerStates()
     {
         var charConfig = configService.CurrentCharacter;
@@ -82,6 +105,12 @@ public class EventTrackingService : IDisposable
         foreach (var tracker in trackers)
         {
             if (!tracker.IsAvailable)
+            {
+                tracker.IsEnabled = false;
+                continue;
+            }
+
+            if (tracker.RequiredAbility != null && !HasAbility(tracker.RequiredAbility))
             {
                 tracker.IsEnabled = false;
                 continue;

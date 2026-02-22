@@ -154,7 +154,7 @@ public class EventsTab
             return $"Item {desynth.SourceItemId} -> {desynth.Results.Count} result(s)";
 
         if (evt.Payload is MonsterSpawnPayload spawn)
-            return $"BNpc {spawn.BnpcBaseId} Lv{spawn.Level} in {spawn.TerritoryTypeId}";
+            return $"BNpc {spawn.BnpcBaseId} Lv{spawn.Level} in {spawn.TerritoryTypeId} (Layout {spawn.LayoutId})";
 
         try
         {

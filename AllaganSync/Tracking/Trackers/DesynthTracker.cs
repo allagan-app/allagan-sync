@@ -28,6 +28,7 @@ public unsafe class DesynthTracker : IGameEventTracker
     public string DisplayName => "Desynthesis Results";
     public bool IsAvailable { get; }
     public bool IsEnabled { get; set; }
+    public string? RequiredAbility => null;
 
     public event Action<TrackedEvent>? EventTracked;
 

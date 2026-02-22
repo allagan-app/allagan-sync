@@ -9,6 +9,7 @@ public interface IGameEventTracker : IDisposable
     string DisplayName { get; }
     bool IsAvailable { get; }
     bool IsEnabled { get; set; }
+    string? RequiredAbility { get; }
 
     event Action<TrackedEvent>? EventTracked;
 }
