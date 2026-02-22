@@ -150,6 +150,9 @@ public class SettingsTab
 
             foreach (var tracker in eventTrackingService.Trackers)
             {
+                if (tracker.RequiredAbility != null && !eventTrackingService.HasAbility(tracker.RequiredAbility))
+                    continue;
+
                 var enabled = charConfig.IsEventEnabled(tracker.EventKey);
                 if (ImGui.Checkbox(tracker.DisplayName, ref enabled))
                 {

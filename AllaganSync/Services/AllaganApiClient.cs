@@ -76,6 +76,55 @@ public class AllaganApiClient : IDisposable
         return await httpClient.SendAsync(request, cancellationToken);
     }
 
+    public async Task<string[]> GetMeAbilitiesAsync(CancellationToken cancellationToken = default)
+    {
+        var token = ResolveToken();
+        if (string.IsNullOrEmpty(token))
+            return [];
+
+        var baseUrl = BaseUrl;
+        var url = $"{baseUrl}/api/v1/character/me";
+
+#if DEBUG
+        log.Info($"GET {url}");
+#endif
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                log.Warning($"GetMeAbilitiesAsync: API returned {response.StatusCode}");
+                return [];
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("abilities", out var abilitiesElement))
+            {
+                var abilities = new System.Collections.Generic.List<string>();
+                foreach (var item in abilitiesElement.EnumerateArray())
+                {
+                    var value = item.GetString();
+                    if (value != null)
+                        abilities.Add(value);
+                }
+                return abilities.ToArray();
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"GetMeAbilitiesAsync: Failed to fetch abilities: {ex.Message}");
+        }
+
+        return [];
+    }
+
     public bool HasToken()
     {
         return !string.IsNullOrEmpty(ResolveToken());

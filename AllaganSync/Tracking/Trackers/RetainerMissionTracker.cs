@@ -28,6 +28,7 @@ public unsafe class RetainerMissionTracker : IGameEventTracker
     public string DisplayName => "Retainer Mission Results";
     public bool IsAvailable { get; }
     public bool IsEnabled { get; set; }
+    public string? RequiredAbility => null;
 
     public event Action<TrackedEvent>? EventTracked;
 

@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
@@ -74,6 +76,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(desynthTracker);
         var retainerMissionTracker = new RetainerMissionTracker(log, dataManager, gameInteropProvider);
         eventTrackingService.RegisterTracker(retainerMissionTracker);
+        var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);
+        eventTrackingService.RegisterTracker(monsterSpawnTracker);
         containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
         eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
@@ -104,6 +108,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             syncService.RequestData();
             _ = containerOpenTracker.LoadContainerListAsync();
+            _ = LoadAbilitiesAndUpdateStatesAsync();
         }
 
         log.Info("Allagan Sync loaded.");
@@ -123,9 +128,28 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnLogin()
     {
+        _ = OnLoginAsync();
+    }
+
+    private async Task OnLoginAsync()
+    {
+        await eventTrackingService.LoadAbilitiesAsync();
         OnCharacterChanged();
         eventTrackingService.Start();
         _ = containerOpenTracker.LoadContainerListAsync();
+    }
+
+    private async Task LoadAbilitiesAndUpdateStatesAsync()
+    {
+        try
+        {
+            await eventTrackingService.LoadAbilitiesAsync();
+            eventTrackingService.UpdateTrackerStates();
+        }
+        catch (Exception ex)
+        {
+            log.Error($"Failed to load abilities: {ex}");
+        }
     }
 
     private void OnLogout(int type, int code)

@@ -32,6 +32,7 @@ public class ContainerOpenTracker : IGameEventTracker
     public string DisplayName => "Container Opens";
     public bool IsAvailable { get; }
     public bool IsEnabled { get; set; }
+    public string? RequiredAbility => null;
 
     public event Action<TrackedEvent>? EventTracked;
 
