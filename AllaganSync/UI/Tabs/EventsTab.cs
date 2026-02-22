@@ -153,6 +153,9 @@ public class EventsTab
         if (evt.Payload is DesynthResultPayload desynth)
             return $"Item {desynth.SourceItemId} -> {desynth.Results.Count} result(s)";
 
+        if (evt.Payload is MonsterSpawnPayload spawn)
+            return $"BNpc {spawn.BnpcBaseId} Lv{spawn.Level} in {spawn.TerritoryTypeId}";
+
         try
         {
             var json = JsonSerializer.Serialize(evt.Payload);
