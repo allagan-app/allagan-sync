@@ -17,20 +17,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 9.0.x
-
       - name: Download Dalamud
         run: |
           curl -sL https://goatcorp.github.io/dalamud-distrib/latest.zip -o latest.zip
-          mkdir -p "$HOME/.xlcore/dalamud/Hooks/dev"
-          unzip -o latest.zip -d "$HOME/.xlcore/dalamud/Hooks/dev"
+          mkdir -p .dalamud
+          unzip -o latest.zip -d .dalamud
 
       - name: Build
         env:
-          DALAMUD_HOME: ${{ github.workspace }}/../.xlcore/dalamud/Hooks/dev
+          DALAMUD_HOME: ${{ github.workspace }}/.dalamud
         run: dotnet build AllaganSync.slnx --configuration Release
 
       - name: Prepare release assets
@@ -38,7 +33,7 @@ jobs:
         run: |
           zip_path=$(find AllaganSync/bin -name "latest.zip" -type f | head -1)
           if [ -z "$zip_path" ]; then echo "latest.zip not found"; exit 1; fi
-          icon_path=$(realpath assets/icon.png)
+          icon_path="$(cd "$(dirname "assets/icon.png")" && pwd)/$(basename "assets/icon.png")"
           if [ ! -f "$icon_path" ]; then echo "icon.png not found"; exit 1; fi
           echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
           echo "icon_path=$icon_path" >> "$GITHUB_OUTPUT"
