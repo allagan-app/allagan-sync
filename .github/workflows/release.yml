@@ -20,12 +20,12 @@ jobs:
       - name: Download Dalamud
         run: |
           curl -sL https://goatcorp.github.io/dalamud-distrib/latest.zip -o latest.zip
-          mkdir -p "$HOME/.xlcore/dalamud/Hooks/dev"
-          unzip -o latest.zip -d "$HOME/.xlcore/dalamud/Hooks/dev"
+          mkdir -p .dalamud
+          unzip -o latest.zip -d .dalamud
 
       - name: Build
         env:
-          DALAMUD_HOME: ${{ github.workspace }}/../.xlcore/dalamud/Hooks/dev
+          DALAMUD_HOME: ${{ github.workspace }}/.dalamud
         run: dotnet build AllaganSync.slnx --configuration Release
 
       - name: Prepare release assets
