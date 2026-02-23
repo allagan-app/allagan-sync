@@ -68,6 +68,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
                         {
                             BnpcBaseId = baseId,
                             TerritoryTypeId = clientState.TerritoryType,
+                            MapId = clientState.MapId,
                             LayoutId = packet->Common.LayoutId,
                             PositionX = packet->Common.Position.X,
                             PositionY = packet->Common.Position.Y,

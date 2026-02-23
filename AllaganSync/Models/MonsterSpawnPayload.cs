@@ -10,6 +10,9 @@ public class MonsterSpawnPayload
     [JsonPropertyName("territory_type_id")]
     public uint TerritoryTypeId { get; set; }
 
+    [JsonPropertyName("map_id")]
+    public uint MapId { get; set; }
+
     [JsonPropertyName("layout_id")]
     public uint LayoutId { get; set; }
 

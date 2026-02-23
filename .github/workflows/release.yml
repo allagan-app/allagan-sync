@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-2022
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
@@ -23,51 +23,44 @@ jobs:
           dotnet-version: 9.0.x
 
       - name: Download Dalamud
-        shell: pwsh
         run: |
-          Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
-          Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+          curl -sL https://goatcorp.github.io/dalamud-distrib/latest.zip -o latest.zip
+          mkdir -p "$HOME/.xlcore/dalamud/Hooks/dev"
+          unzip -o latest.zip -d "$HOME/.xlcore/dalamud/Hooks/dev"
 
       - name: Build
-        shell: pwsh
+        env:
+          DALAMUD_HOME: ${{ github.workspace }}/../.xlcore/dalamud/Hooks/dev
         run: dotnet build AllaganSync.slnx --configuration Release
 
       - name: Prepare release assets
         id: assets
-        shell: pwsh
         run: |
-          $zip = Get-ChildItem -Path "AllaganSync/bin" -Recurse -Filter "latest.zip" | Select-Object -First 1
-          if (-not $zip) { throw "latest.zip not found under AllaganSync/bin" }
-
-          $icon = Resolve-Path "assets/icon.png"
-          if (-not $icon) { throw "assets/icon.png not found" }
-
-          "zip_path=$($zip.FullName)" >> $env:GITHUB_OUTPUT
-          "icon_path=$($icon.Path)" >> $env:GITHUB_OUTPUT
+          zip_path=$(find AllaganSync/bin -name "latest.zip" -type f | head -1)
+          if [ -z "$zip_path" ]; then echo "latest.zip not found"; exit 1; fi
+          icon_path=$(realpath assets/icon.png)
+          if [ ! -f "$icon_path" ]; then echo "icon.png not found"; exit 1; fi
+          echo "zip_path=$zip_path" >> "$GITHUB_OUTPUT"
+          echo "icon_path=$icon_path" >> "$GITHUB_OUTPUT"
 
       - name: Create draft release (if missing)
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "${{ github.ref_name }}" *> $null
-          if ($LASTEXITCODE -ne 0) {
+          if ! gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
             gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --draft --generate-notes
-          }
+          fi
 
       - name: Upload assets to release
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ github.ref_name }}" `
-            "${{ steps.assets.outputs.zip_path }}" `
-            "${{ steps.assets.outputs.icon_path }}" `
+          gh release upload "${{ github.ref_name }}" \
+            "${{ steps.assets.outputs.zip_path }}" \
+            "${{ steps.assets.outputs.icon_path }}" \
             --clobber
 
       - name: Publish release
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release edit "${{ github.ref_name }}" --draft=false --latest
+        run: gh release edit "${{ github.ref_name }}" --draft=false --latest
