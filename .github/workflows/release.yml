@@ -17,11 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 9.0.x
-
       - name: Download Dalamud
         run: |
           curl -sL https://goatcorp.github.io/dalamud-distrib/latest.zip -o latest.zip
