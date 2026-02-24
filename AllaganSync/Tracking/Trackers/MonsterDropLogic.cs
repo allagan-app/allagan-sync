@@ -109,9 +109,6 @@ internal class MonsterDropLogic
             baseT = windowStartTick;
         }
 
-        if (itemSnapshot.Length == 0)
-            return null;
-
         var payload = new MonsterDropPayload
         {
             TerritoryTypeId = territory,

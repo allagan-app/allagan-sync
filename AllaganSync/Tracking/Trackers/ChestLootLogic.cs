@@ -125,9 +125,6 @@ internal class ChestLootLogic
             ? lootAddedItems.Select(item => new ChestLootItem { ItemId = item.ItemId, Count = item.ItemCount }).ToList()
             : inventorySnapshot.Select(item => new ChestLootItem { ItemId = item.ItemId, Count = item.Quantity }).ToList();
 
-        if (items.Count == 0)
-            return null;
-
         var payload = new ChestLootPayload
         {
             TerritoryTypeId = pendingTerritoryType,
