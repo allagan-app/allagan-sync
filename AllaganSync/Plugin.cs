@@ -40,6 +40,7 @@ public sealed class Plugin : IDalamudPlugin
         IFramework framework,
         IGameInventory gameInventory,
         IUnlockState unlockState,
+        IObjectTable objectTable,
         IGameInteropProvider gameInteropProvider)
     {
         this.pluginInterface = pluginInterface;
@@ -78,6 +79,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(retainerMissionTracker);
         var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterSpawnTracker);
+        var chestLootTracker = new ChestLootTracker(log, clientState, objectTable, gameInteropProvider);
+        eventTrackingService.RegisterTracker(chestLootTracker);
         containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
         eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
