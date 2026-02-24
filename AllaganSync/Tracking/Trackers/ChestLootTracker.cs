@@ -1,15 +1,26 @@
 using System;
+using System.Collections.Generic;
 using AllaganSync.Models;
+using Dalamud.Game.Inventory;
+using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game.Network;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.Network;
 
 namespace AllaganSync.Tracking.Trackers;
 
 public unsafe class ChestLootTracker : IGameEventTracker
 {
+    private const string OpenTreasureSig =
+        "40 53 48 83 EC ?? 48 8B DA 48 8D 0D ?? ?? ?? ?? 8B 52 ?? E8 ?? ?? ?? ?? 48 85 C0 74 ?? F3 0F 10 5B";
+
     private const string LootAddedSig =
         "48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 44 89 4C 24";
+
+    private delegate void OpenTreasureDelegate(uint targetId, byte* packet);
 
     private delegate byte LootAddedDelegate(
         Loot* lootWindow,
@@ -33,27 +44,62 @@ public unsafe class ChestLootTracker : IGameEventTracker
     private readonly IPluginLog log;
     private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
+    private readonly IGameInventory gameInventory;
+    private readonly IFramework framework;
+    private readonly ChestLootLogic logic = new();
+    private Hook<PacketDispatcher.Delegates.HandleSpawnTreasurePacket>? spawnTreasureHook;
+    private Hook<OpenTreasureDelegate>? openTreasureHook;
     private Hook<LootAddedDelegate>? lootAddedHook;
 
     public string EventKey => "chest_loot";
-    public string DisplayName => "Chest Loot (Debug)";
+    public string DisplayName => "Chest Loot";
     public bool IsAvailable { get; }
     public bool IsEnabled { get; set; }
     public string? RequiredAbility => null;
 
-#pragma warning disable CS0067 // Required by IGameEventTracker interface, debug tracker does not fire events
     public event Action<TrackedEvent>? EventTracked;
-#pragma warning restore CS0067
 
     public ChestLootTracker(
         IPluginLog log,
         IClientState clientState,
         IObjectTable objectTable,
+        IGameInventory gameInventory,
+        IFramework framework,
         IGameInteropProvider gameInteropProvider)
     {
         this.log = log;
         this.clientState = clientState;
         this.objectTable = objectTable;
+        this.gameInventory = gameInventory;
+        this.framework = framework;
+
+        var hooksInstalled = 0;
+
+        try
+        {
+            spawnTreasureHook = gameInteropProvider.HookFromAddress<PacketDispatcher.Delegates.HandleSpawnTreasurePacket>(
+                PacketDispatcher.MemberFunctionPointers.HandleSpawnTreasurePacket,
+                OnSpawnTreasurePacket);
+            spawnTreasureHook.Enable();
+            hooksInstalled++;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"ChestLootTracker: SpawnTreasure hook failed. {ex.Message}");
+        }
+
+        try
+        {
+            openTreasureHook = gameInteropProvider.HookFromSignature<OpenTreasureDelegate>(
+                OpenTreasureSig,
+                OnOpenTreasure);
+            openTreasureHook.Enable();
+            hooksInstalled++;
+        }
+        catch (Exception ex)
+        {
+            log.Warning($"ChestLootTracker: OpenTreasure hook failed. {ex.Message}");
+        }
 
         try
         {
@@ -61,13 +107,51 @@ public unsafe class ChestLootTracker : IGameEventTracker
                 LootAddedSig,
                 OnLootAdded);
             lootAddedHook.Enable();
-            IsAvailable = true;
-            log.Info("ChestLootTracker: Hook installed successfully.");
+            hooksInstalled++;
         }
         catch (Exception ex)
         {
-            IsAvailable = false;
-            log.Warning($"ChestLootTracker: Failed to install hook, chest loot tracking unavailable. {ex.Message}");
+            log.Warning($"ChestLootTracker: LootAdded hook failed. {ex.Message}");
+        }
+
+        gameInventory.InventoryChangedRaw += OnInventoryChanged;
+        framework.Update += OnFrameworkUpdate;
+
+        IsAvailable = hooksInstalled > 0;
+        log.Info($"ChestLootTracker: {hooksInstalled}/3 hooks installed.");
+    }
+
+    private void OnSpawnTreasurePacket(uint targetId, SpawnTreasurePacket* packet)
+    {
+        spawnTreasureHook!.Original(targetId, packet);
+    }
+
+    private void OnOpenTreasure(uint targetId, byte* packet)
+    {
+        openTreasureHook!.Original(targetId, packet);
+
+        if (!IsEnabled)
+            return;
+
+        try
+        {
+            var chestObject = objectTable.SearchByEntityId(targetId);
+            if (chestObject == null)
+                return;
+
+            var treasure = (Treasure*)chestObject.Address;
+            var pos = treasure->Position;
+
+            logic.ProcessChestOpen(
+                treasure->BaseId, targetId, (byte)treasure->CofferKind,
+                pos.X, pos.Y, pos.Z,
+                clientState.TerritoryType, clientState.MapId);
+
+            log.Debug($"ChestLootTracker: Chest opened — BaseId={treasure->BaseId}, CofferKind={treasure->CofferKind}");
+        }
+        catch (Exception ex)
+        {
+            log.Error($"ChestLootTracker: Error in OpenTreasure: {ex}");
         }
     }
 
@@ -101,42 +185,56 @@ public unsafe class ChestLootTracker : IGameEventTracker
 
         try
         {
-            log.Info(
-                $"ChestLootTracker: LootAdded fired!\n" +
-                $"  chestObjectId={chestObjectId}, chestItemIndex={chestItemIndex}, itemId={itemId}, itemCount={itemCount}\n" +
-                $"  rollState={rollState} ({(int)rollState}), rollResult={rollResult} ({(int)rollResult}), rollValue={rollValue}\n" +
-                $"  time={time}, maxTime={maxTime}, lootMode={lootMode} ({(int)lootMode})\n" +
-                $"  glamourItemId={glamourItemId}, a14={a14}, a16={a16}, a17={a17}");
-
-            var chestObject = objectTable.SearchByEntityId(chestObjectId);
-            if (chestObject != null)
-            {
-                var pos = chestObject.Position;
-                log.Info(
-                    $"ChestLootTracker: Chest Object Details:\n" +
-                    $"  BaseId={chestObject.BaseId}, ObjectKind={chestObject.ObjectKind}, SubKind={chestObject.SubKind}\n" +
-                    $"  Position=({pos.X}, {pos.Y}, {pos.Z})\n" +
-                    $"  Name=\"{chestObject.Name}\"");
-            }
-            else
-            {
-                log.Info($"ChestLootTracker: Chest object not found for entityId={chestObjectId}");
-            }
-
-            log.Info(
-                $"ChestLootTracker: Context:\n" +
-                $"  TerritoryType={clientState.TerritoryType}, MapId={clientState.MapId}");
+            logic.ProcessLootAdded(chestObjectId, chestItemIndex, itemId, itemCount, time, maxTime);
         }
         catch (Exception ex)
         {
-            log.Error($"ChestLootTracker: Error processing loot: {ex}");
+            log.Error($"ChestLootTracker: Error in LootAdded: {ex}");
         }
 
         return result;
     }
 
+    private void OnInventoryChanged(IReadOnlyCollection<InventoryEventArgs> events)
+    {
+        if (!IsEnabled || !logic.IsCollecting)
+            return;
+
+        foreach (var evt in events)
+        {
+            if (evt.Item.ContainerType == GameInventoryType.DamagedGear)
+                continue;
+
+            switch (evt.Type)
+            {
+                case GameInventoryEvent.Added when evt is InventoryItemAddedArgs { Item: var item }:
+                    logic.ProcessInventoryAdd(item.ItemId, item.Quantity);
+                    break;
+                case GameInventoryEvent.Changed when evt is InventoryItemChangedArgs { OldItemState: var oldItem, Item: var newItem }:
+                    logic.ProcessInventoryChange(oldItem.ItemId, oldItem.Quantity, newItem.ItemId, newItem.Quantity);
+                    break;
+            }
+        }
+    }
+
+    private void OnFrameworkUpdate(IFramework _)
+    {
+        var trackedEvent = logic.ProcessTick();
+        if (trackedEvent == null)
+            return;
+
+        EventTracked?.Invoke(trackedEvent);
+
+        if (trackedEvent.Payload is ChestLootPayload payload)
+            log.Debug($"ChestLootTracker: Captured {payload.Items.Count} items from chest BaseId={payload.ChestBaseId}.");
+    }
+
     public void Dispose()
     {
+        gameInventory.InventoryChangedRaw -= OnInventoryChanged;
+        framework.Update -= OnFrameworkUpdate;
+        spawnTreasureHook?.Dispose();
+        openTreasureHook?.Dispose();
         lootAddedHook?.Dispose();
     }
 }

@@ -9,16 +9,18 @@ public class DebugTab
 {
     private readonly AllaganApiClient apiClient;
     private readonly ConfigurationService configService;
+    private readonly EventTrackingService eventTrackingService;
 
     private string apiBaseUrlInput = string.Empty;
     private string apiTokenInput = string.Empty;
     private bool initialized = false;
     private bool confirmReset = false;
 
-    public DebugTab(AllaganApiClient apiClient, ConfigurationService configService)
+    public DebugTab(AllaganApiClient apiClient, ConfigurationService configService, EventTrackingService eventTrackingService)
     {
         this.apiClient = apiClient;
         this.configService = configService;
+        this.eventTrackingService = eventTrackingService;
     }
 
     public void Draw()
@@ -33,6 +35,43 @@ public class DebugTab
         ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Debug Build");
         ImGui.Spacing();
 
+        DrawDryRunSection();
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        DrawOverridesSection();
+
+        ImGui.Spacing();
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        DrawResetSection();
+    }
+
+    // ── Dry Run ──────────────────────────────────────────────────────
+
+    private void DrawDryRunSection()
+    {
+        var sendingPaused = eventTrackingService.SendingPaused;
+        if (ImGui.Checkbox("Dry Run (collect events without sending)", ref sendingPaused))
+        {
+            eventTrackingService.SendingPaused = sendingPaused;
+        }
+
+        if (sendingPaused)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(0.3f, 0.8f, 1, 1), $"Buffer: {eventTrackingService.PendingCount}");
+        }
+    }
+
+    // ── API Overrides ────────────────────────────────────────────────
+
+    private void DrawOverridesSection()
+    {
         var overridesEnabled = configService.DebugOverridesEnabled;
         if (ImGui.Checkbox("Enable Debug Overrides", ref overridesEnabled))
         {
@@ -89,12 +128,12 @@ public class DebugTab
             configService.DebugTokenOverride = string.Empty;
             configService.Save();
         }
+    }
 
-        ImGui.Spacing();
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
+    // ── Plugin Config Reset ──────────────────────────────────────────
 
+    private void DrawResetSection()
+    {
         ImGui.Text("Plugin Configuration");
         ImGui.Spacing();
 
