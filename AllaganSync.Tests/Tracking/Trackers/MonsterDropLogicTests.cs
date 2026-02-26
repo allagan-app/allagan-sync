@@ -18,7 +18,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void SingleKillAndDrop_ProducesEvent()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 100;
         logic.ProcessInventoryAdd(1001, 2);
@@ -31,6 +31,7 @@ public class MonsterDropLogicTests
         var payload = Assert.IsType<MonsterDropPayload>(result.Payload);
         Assert.Single(payload.Deaths);
         Assert.Equal(50u, payload.Deaths[0].BnpcBaseId);
+        Assert.Equal(1050u, payload.Deaths[0].BnpcNameId);
         Assert.Single(payload.Items);
         Assert.Equal(1001u, payload.Items[0].ItemId);
         Assert.Equal(2, payload.Items[0].Count);
@@ -39,10 +40,10 @@ public class MonsterDropLogicTests
     [Fact]
     public void WindowExtension_SecondDeathExtendsWindow()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 1000;
-        logic.RecordDeath(bnpcBaseId: 51, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 500, map: 600);
 
         currentTick += 100;
         logic.ProcessInventoryAdd(1001, 1);
@@ -56,18 +57,20 @@ public class MonsterDropLogicTests
         var payload = Assert.IsType<MonsterDropPayload>(result.Payload);
         Assert.Equal(2, payload.Deaths.Count);
         Assert.Equal(50u, payload.Deaths[0].BnpcBaseId);
+        Assert.Equal(1050u, payload.Deaths[0].BnpcNameId);
         Assert.Equal(51u, payload.Deaths[1].BnpcBaseId);
+        Assert.Equal(1051u, payload.Deaths[1].BnpcNameId);
     }
 
     [Fact]
     public void OffsetMs_RelativeToFirstDeath()
     {
         // First death at tick 1000
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         // Second death at tick 1500
         currentTick = 1500;
-        logic.RecordDeath(bnpcBaseId: 51, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 500, map: 600);
 
         // Item at tick 1600
         currentTick = 1600;
@@ -95,7 +98,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void NoItems_StillFiresEventWithDeaths()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += MonsterDropLogic.CollectWindowMs;
         var result = logic.ProcessTick();
@@ -112,7 +115,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void TimerTooEarly_NoEvent()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
         logic.ProcessInventoryAdd(1001, 1);
 
         currentTick += MonsterDropLogic.CollectWindowMs - 1;
@@ -124,10 +127,10 @@ public class MonsterDropLogicTests
     [Fact]
     public void TerritoryFromFirstDeath()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 100;
-        logic.RecordDeath(bnpcBaseId: 51, territory: 501, map: 601);
+        logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 501, map: 601);
 
         currentTick += 100;
         logic.ProcessInventoryAdd(1001, 1);
@@ -145,7 +148,7 @@ public class MonsterDropLogicTests
     public void WindowReset_SecondWindowHasCleanState()
     {
         // First window
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
         currentTick += 100;
         logic.ProcessInventoryAdd(1001, 1);
 
@@ -156,7 +159,7 @@ public class MonsterDropLogicTests
         // Second window — should not carry over data from first
         currentTick += 100;
         var secondStart = currentTick;
-        logic.RecordDeath(bnpcBaseId: 99, territory: 800, map: 900);
+        logic.RecordDeath(bnpcBaseId: 99, bnpcNameId: 1099, territory: 800, map: 900);
         currentTick += 50;
         logic.ProcessInventoryAdd(2002, 3);
 
@@ -175,7 +178,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void InventoryChange_SameItemId_UsesQuantityDiff()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 100;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 5, newItemId: 1001, newQuantity: 8);
@@ -193,7 +196,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void InventoryChange_DifferentItemId_UsesNewQuantity()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 100;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 5, newItemId: 2002, newQuantity: 7);
@@ -213,7 +216,7 @@ public class MonsterDropLogicTests
     {
         logic.ProcessInventoryAdd(1001, 1);
 
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
         currentTick += 100;
         logic.ProcessInventoryAdd(2002, 1);
 
@@ -229,7 +232,7 @@ public class MonsterDropLogicTests
     [Fact]
     public void InventoryChange_SameItemId_NegativeDiff_NotAdded()
     {
-        logic.RecordDeath(bnpcBaseId: 50, territory: 500, map: 600);
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
         currentTick += 100;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 10, newItemId: 1001, newQuantity: 5);

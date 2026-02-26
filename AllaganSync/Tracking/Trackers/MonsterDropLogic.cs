@@ -11,7 +11,7 @@ internal class MonsterDropLogic
 
     private readonly Func<long> getTick;
 
-    internal record struct MobDeathEntry(long Tick, uint BnpcBaseId);
+    internal record struct MobDeathEntry(long Tick, uint BnpcBaseId, uint BnpcNameId);
 
     internal record struct ItemEntry(long Tick, uint ItemId, int Quantity);
 
@@ -30,7 +30,7 @@ internal class MonsterDropLogic
         getTick = tickProvider ?? (() => Environment.TickCount64);
     }
 
-    internal void RecordDeath(uint bnpcBaseId, ushort territory, uint map)
+    internal void RecordDeath(uint bnpcBaseId, uint bnpcNameId, ushort territory, uint map)
     {
         var now = getTick();
 
@@ -43,7 +43,7 @@ internal class MonsterDropLogic
                 pendingMapId = map;
             }
 
-            pendingDeaths.Add(new MobDeathEntry(now, bnpcBaseId));
+            pendingDeaths.Add(new MobDeathEntry(now, bnpcBaseId, bnpcNameId));
             collectEndTick = now + CollectWindowMs;
         }
     }
@@ -116,6 +116,7 @@ internal class MonsterDropLogic
             Deaths = deathSnapshot.Select(death => new MonsterDropDeath
             {
                 BnpcBaseId = death.BnpcBaseId,
+                BnpcNameId = death.BnpcNameId,
                 OffsetMs = death.Tick - baseT,
             }).ToList(),
             Items = itemSnapshot.Select(item => new MonsterDropItem

@@ -23,6 +23,9 @@ public class MonsterDropDeath
     [JsonPropertyName("bnpc_base_id")]
     public uint BnpcBaseId { get; set; }
 
+    [JsonPropertyName("bnpc_name_id")]
+    public uint BnpcNameId { get; set; }
+
     [JsonPropertyName("offset_ms")]
     public long OffsetMs { get; set; }
 }

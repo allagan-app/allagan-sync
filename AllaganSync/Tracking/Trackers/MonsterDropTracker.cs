@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using AllaganSync.Models;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Hooking;
@@ -75,14 +77,14 @@ public unsafe class MonsterDropTracker : IGameEventTracker
         try
         {
             var obj = objectTable.SearchByEntityId(entityId);
-            if (obj == null || (byte)obj.ObjectKind != (byte)ObjectKind.BattleNpc)
+            if (obj is not ICharacter character || (byte)character.ObjectKind != (byte)ObjectKind.BattleNpc)
                 return;
 
-            var subKind = (BattleNpcSubKind)obj.SubKind;
+            var subKind = (BattleNpcSubKind)character.SubKind;
             if (subKind is BattleNpcSubKind.Pet or BattleNpcSubKind.Buddy or BattleNpcSubKind.RaceChocobo)
                 return;
 
-            logic.RecordDeath(obj.BaseId, clientState.TerritoryType, clientState.MapId);
+            logic.RecordDeath(character.BaseId, character.NameId, clientState.TerritoryType, clientState.MapId);
         }
         catch (Exception ex)
         {
