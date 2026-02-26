@@ -19,12 +19,21 @@ public class InstanceSessionService : IDisposable
         this.log = log;
 
         clientState.TerritoryChanged += OnTerritoryChanged;
+        condition.ConditionChange += OnConditionChange;
         EvaluateInstanceState();
     }
 
     private void OnTerritoryChanged(ushort territoryId)
     {
         EvaluateInstanceState();
+    }
+
+    private void OnConditionChange(ConditionFlag flag, bool value)
+    {
+        if (flag is ConditionFlag.BoundByDuty or ConditionFlag.BoundByDuty56)
+        {
+            EvaluateInstanceState();
+        }
     }
 
     private void EvaluateInstanceState()
@@ -34,11 +43,11 @@ public class InstanceSessionService : IDisposable
         if (inDuty && CurrentSessionId == null)
         {
             CurrentSessionId = Guid.NewGuid().ToString();
-            log.Debug($"Instance session started: {CurrentSessionId}");
+            log.Info($"Instance session started: {CurrentSessionId}");
         }
         else if (!inDuty && CurrentSessionId != null)
         {
-            log.Debug($"Instance session ended: {CurrentSessionId}");
+            log.Info($"Instance session ended: {CurrentSessionId}");
             CurrentSessionId = null;
         }
     }
@@ -46,5 +55,6 @@ public class InstanceSessionService : IDisposable
     public void Dispose()
     {
         clientState.TerritoryChanged -= OnTerritoryChanged;
+        condition.ConditionChange -= OnConditionChange;
     }
 }
