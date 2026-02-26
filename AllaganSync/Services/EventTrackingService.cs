@@ -24,6 +24,7 @@ public class EventTrackingService : IDisposable
     private readonly IPluginLog log;
     private readonly ConfigurationService configService;
     private readonly AllaganApiClient apiClient;
+    private readonly InstanceSessionService instanceSessionService;
     private readonly ConcurrentQueue<TrackedEvent> buffer = new();
     private readonly List<IGameEventTracker> trackers = new();
     private readonly List<SendHistoryEntry> sendHistory = new();
@@ -65,11 +66,12 @@ public class EventTrackingService : IDisposable
     public string? BackoffReason => IsBackingOff ? backoffReason : null;
     public int BackoffSecondsRemaining => IsBackingOff ? Math.Max(0, (int)(backoffUntil!.Value - DateTime.Now).TotalSeconds) : 0;
 
-    public EventTrackingService(IPluginLog log, ConfigurationService configService, AllaganApiClient apiClient)
+    public EventTrackingService(IPluginLog log, ConfigurationService configService, AllaganApiClient apiClient, InstanceSessionService instanceSessionService)
     {
         this.log = log;
         this.configService = configService;
         this.apiClient = apiClient;
+        this.instanceSessionService = instanceSessionService;
     }
 
     public void RegisterTracker(IGameEventTracker tracker)
@@ -174,6 +176,8 @@ public class EventTrackingService : IDisposable
             else
                 break;
         }
+
+        trackedEvent.InstanceSessionId = instanceSessionService.CurrentSessionId;
 
         buffer.Enqueue(trackedEvent);
         Interlocked.Increment(ref bufferCount);

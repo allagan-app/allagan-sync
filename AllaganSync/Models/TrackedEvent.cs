@@ -12,4 +12,8 @@ public class TrackedEvent
 
     [JsonPropertyName("occurred_at")]
     public string? OccurredAt { get; set; }
+
+    [JsonPropertyName("instance_session_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InstanceSessionId { get; set; }
 }
