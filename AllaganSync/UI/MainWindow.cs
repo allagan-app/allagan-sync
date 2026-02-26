@@ -23,7 +23,7 @@ public class MainWindow : Window, IDisposable
         collectionTab = new CollectionTab(configService, syncService, openSettings);
         eventsTab = new EventsTab(configService, eventTrackingService, openSettings);
 #if DEBUG
-        debugTab = new DebugTab(apiClient, configService);
+        debugTab = new DebugTab(apiClient, configService, eventTrackingService);
 #endif
 
         Size = new Vector2(500, 400);

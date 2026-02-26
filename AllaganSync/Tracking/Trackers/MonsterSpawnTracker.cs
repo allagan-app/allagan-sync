@@ -60,6 +60,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
                 if (subKind is not (BattleNpcSubKind.Pet or BattleNpcSubKind.Buddy or BattleNpcSubKind.RaceChocobo))
                 {
                     var baseId = packet->Common.BaseId;
+                    var nameId = packet->Common.NameId;
                     var hash = $"{baseId}_{clientState.TerritoryType}_{packet->Common.LayoutId}";
 
                     if (seenSpawns.TryAdd(hash, 0))
@@ -67,6 +68,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
                         var payload = new MonsterSpawnPayload
                         {
                             BnpcBaseId = baseId,
+                            BnpcNameId = nameId,
                             TerritoryTypeId = clientState.TerritoryType,
                             MapId = clientState.MapId,
                             LayoutId = packet->Common.LayoutId,

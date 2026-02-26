@@ -60,6 +60,7 @@ public class EventTrackingService : IDisposable
     }
     public IReadOnlyList<IGameEventTracker> Trackers => trackers;
 
+    public bool SendingPaused { get; set; }
     public bool IsBackingOff => backoffUntil.HasValue && DateTime.Now < backoffUntil.Value;
     public string? BackoffReason => IsBackingOff ? backoffReason : null;
     public int BackoffSecondsRemaining => IsBackingOff ? Math.Max(0, (int)(backoffUntil!.Value - DateTime.Now).TotalSeconds) : 0;
@@ -185,6 +186,9 @@ public class EventTrackingService : IDisposable
     public async Task FlushAsync()
     {
         if (bufferCount == 0)
+            return;
+
+        if (SendingPaused)
             return;
 
         if (!apiClient.HasToken())

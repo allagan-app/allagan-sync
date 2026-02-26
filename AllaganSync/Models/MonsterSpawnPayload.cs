@@ -7,6 +7,9 @@ public class MonsterSpawnPayload
     [JsonPropertyName("bnpc_base_id")]
     public uint BnpcBaseId { get; set; }
 
+    [JsonPropertyName("bnpc_name_id")]
+    public uint BnpcNameId { get; set; }
+
     [JsonPropertyName("territory_type_id")]
     public uint TerritoryTypeId { get; set; }
 

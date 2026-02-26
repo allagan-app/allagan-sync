@@ -40,6 +40,7 @@ public class EventsTab
             return;
         }
 
+        DrawDryRunBanner();
         DrawBackoffBanner();
         DrawActions(charConfig);
 
@@ -50,6 +51,18 @@ public class EventsTab
         ImGui.Spacing();
 
         DrawSendHistory();
+    }
+
+    // ── Dry Run Banner ────────────────────────────────────────────────────
+
+    private void DrawDryRunBanner()
+    {
+        if (!eventTrackingService.SendingPaused)
+            return;
+
+        ImGui.TextColored(new Vector4(0.3f, 0.8f, 1, 1),
+            $"Dry Run active — events are collected but not sent ({eventTrackingService.PendingCount} buffered)");
+        ImGui.Spacing();
     }
 
     // ── Backoff Banner ───────────────────────────────────────────────────
