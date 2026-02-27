@@ -23,6 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IFramework framework;
     private readonly AllaganApiClient apiClient;
     private readonly AllaganSyncService syncService;
+    private readonly InstanceSessionService instanceSessionService;
     private readonly EventTrackingService eventTrackingService;
     private readonly ContainerOpenTracker containerOpenTracker;
     private readonly WindowSystem windowSystem = new("AllaganSync");
@@ -37,6 +38,7 @@ public sealed class Plugin : IDalamudPlugin
         IPlayerState playerState,
         IDataManager dataManager,
         IClientState clientState,
+        ICondition condition,
         IFramework framework,
         IGameInventory gameInventory,
         IUnlockState unlockState,
@@ -71,8 +73,11 @@ public sealed class Plugin : IDalamudPlugin
         syncService.RegisterCollector(new BlueMageSpellCollector(dataManager, unlockState));
         syncService.RegisterCollector(new CharacterCustomizationCollector(dataManager, unlockState));
 
+        // Instance session tracking
+        instanceSessionService = new InstanceSessionService(clientState, condition, log);
+
         // Event tracking
-        eventTrackingService = new EventTrackingService(log, configService, apiClient);
+        eventTrackingService = new EventTrackingService(log, configService, apiClient, instanceSessionService);
         var desynthTracker = new DesynthTracker(log, dataManager, gameInteropProvider);
         eventTrackingService.RegisterTracker(desynthTracker);
         var retainerMissionTracker = new RetainerMissionTracker(log, dataManager, gameInteropProvider);
@@ -215,6 +220,7 @@ public sealed class Plugin : IDalamudPlugin
 
         windowSystem.RemoveAllWindows();
         mainWindow.Dispose();
+        instanceSessionService.Dispose();
         eventTrackingService.Dispose();
         apiClient.Dispose();
 
