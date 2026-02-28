@@ -95,6 +95,9 @@ public class DutyRewardTracker : IGameEventTracker
 
     private void OnFrameworkUpdate(IFramework _)
     {
+        if (!IsEnabled)
+            return;
+
         var trackedEvent = logic.ProcessTick();
         if (trackedEvent == null)
             return;

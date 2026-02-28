@@ -39,22 +39,22 @@ internal class DutyRewardLogic
 
     internal void ProcessInventoryAdd(uint itemId, int quantity)
     {
-        if (windowStartTick == 0)
-            return;
-
         lock (pendingLock)
         {
+            if (windowStartTick == 0)
+                return;
+
             pendingItems.Add(new ItemEntry(itemId, quantity));
         }
     }
 
     internal void ProcessInventoryChange(uint oldItemId, int oldQuantity, uint newItemId, int newQuantity)
     {
-        if (windowStartTick == 0)
-            return;
-
         lock (pendingLock)
         {
+            if (windowStartTick == 0)
+                return;
+
             if (oldItemId == newItemId)
             {
                 var diff = newQuantity - oldQuantity;

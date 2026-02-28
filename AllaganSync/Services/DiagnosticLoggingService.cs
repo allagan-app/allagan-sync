@@ -212,7 +212,7 @@ public unsafe class DiagnosticLoggingService : IDisposable
         uint arg5, uint arg6, uint arg7, uint arg8,
         GameObjectId targetId, bool isRecorded)
     {
-        actorControlHook!.Original(entityId, category, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, targetId, isRecorded);
+        actorControlHook?.Original(entityId, category, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, targetId, isRecorded);
 
         if (!enabled || isRecorded || category != 0x6)
             return;
@@ -239,7 +239,7 @@ public unsafe class DiagnosticLoggingService : IDisposable
 
     private void OnOpenTreasure(uint targetId, byte* packet)
     {
-        openTreasureHook!.Original(targetId, packet);
+        openTreasureHook?.Original(targetId, packet);
 
         if (!enabled)
             return;
@@ -280,7 +280,10 @@ public unsafe class DiagnosticLoggingService : IDisposable
         int a16,
         uint a17)
     {
-        var result = lootAddedHook!.Original(
+        if (lootAddedHook == null)
+            return 0;
+
+        var result = lootAddedHook.Original(
             lootWindow, chestObjectId, chestItemIndex, itemId, itemCount,
             materia, glamourStainIds, glamourItemId,
             rollState, rollResult, time, maxTime, rollValue, a14,

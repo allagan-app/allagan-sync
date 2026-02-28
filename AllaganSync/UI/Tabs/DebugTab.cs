@@ -79,7 +79,7 @@ public class DebugTab
         {
             ImGui.SameLine();
             ImGui.TextColored(new Vector4(0.3f, 1, 0.3f, 1), "Active");
-            ImGui.TextDisabled("Events logged to Dalamud log. Filter: [DIAG");
+            ImGui.TextDisabled("Events logged to Dalamud log. Filter: [DIAG]");
         }
     }
 
