@@ -30,6 +30,9 @@ public sealed class Plugin : IDalamudPlugin
     private readonly MainWindow mainWindow;
     private readonly SettingsWindow settingsWindow;
     private ulong lastContentId;
+#if DEBUG
+    private DiagnosticLoggingService? diagnosticLoggingService;
+#endif
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -39,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin
         IDataManager dataManager,
         IClientState clientState,
         ICondition condition,
+        IDutyState dutyState,
         IFramework framework,
         IGameInventory gameInventory,
         IUnlockState unlockState,
@@ -76,6 +80,11 @@ public sealed class Plugin : IDalamudPlugin
         // Instance session tracking
         instanceSessionService = new InstanceSessionService(clientState, condition, log);
 
+#if DEBUG
+        // Diagnostic logging (standalone, not an IGameEventTracker)
+        diagnosticLoggingService = new DiagnosticLoggingService(log, clientState, condition, dutyState, objectTable, gameInventory, gameInteropProvider);
+#endif
+
         // Event tracking
         eventTrackingService = new EventTrackingService(log, configService, apiClient, instanceSessionService);
         var desynthTracker = new DesynthTracker(log, dataManager, gameInteropProvider);
@@ -88,6 +97,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(chestLootTracker);
         var monsterDropTracker = new MonsterDropTracker(log, clientState, objectTable, gameInventory, framework, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterDropTracker);
+        var dutyRewardTracker = new DutyRewardTracker(log, clientState, dutyState, gameInventory, framework);
+        eventTrackingService.RegisterTracker(dutyRewardTracker);
         containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
         eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
@@ -96,7 +107,12 @@ public sealed class Plugin : IDalamudPlugin
             eventTrackingService.Start();
 
         settingsWindow = new SettingsWindow(configService, eventTrackingService);
-        mainWindow = new MainWindow(configService, syncService, apiClient, eventTrackingService, () => settingsWindow.IsOpen = true);
+        mainWindow = new MainWindow(
+            configService, syncService, apiClient, eventTrackingService,
+#if DEBUG
+            diagnosticLoggingService,
+#endif
+            () => settingsWindow.IsOpen = true);
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(settingsWindow);
 
@@ -220,6 +236,9 @@ public sealed class Plugin : IDalamudPlugin
 
         windowSystem.RemoveAllWindows();
         mainWindow.Dispose();
+#if DEBUG
+        diagnosticLoggingService?.Dispose();
+#endif
         instanceSessionService.Dispose();
         eventTrackingService.Dispose();
         apiClient.Dispose();

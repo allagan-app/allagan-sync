@@ -10,17 +10,19 @@ public class DebugTab
     private readonly AllaganApiClient apiClient;
     private readonly ConfigurationService configService;
     private readonly EventTrackingService eventTrackingService;
+    private readonly DiagnosticLoggingService? diagnosticLoggingService;
 
     private string apiBaseUrlInput = string.Empty;
     private string apiTokenInput = string.Empty;
     private bool initialized = false;
     private bool confirmReset = false;
 
-    public DebugTab(AllaganApiClient apiClient, ConfigurationService configService, EventTrackingService eventTrackingService)
+    public DebugTab(AllaganApiClient apiClient, ConfigurationService configService, EventTrackingService eventTrackingService, DiagnosticLoggingService? diagnosticLoggingService = null)
     {
         this.apiClient = apiClient;
         this.configService = configService;
         this.eventTrackingService = eventTrackingService;
+        this.diagnosticLoggingService = diagnosticLoggingService;
     }
 
     public void Draw()
@@ -41,6 +43,12 @@ public class DebugTab
         ImGui.Separator();
         ImGui.Spacing();
 
+        DrawDiagnosticLoggingSection();
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
         DrawOverridesSection();
 
         ImGui.Spacing();
@@ -49,6 +57,30 @@ public class DebugTab
         ImGui.Spacing();
 
         DrawResetSection();
+    }
+
+    // ── Diagnostic Logging ─────────────────────────────────────────────
+
+    private void DrawDiagnosticLoggingSection()
+    {
+        if (diagnosticLoggingService == null)
+        {
+            ImGui.TextDisabled("Diagnostic logging unavailable.");
+            return;
+        }
+
+        var diagEnabled = diagnosticLoggingService.IsEnabled;
+        if (ImGui.Checkbox("Diagnostic Event Logging", ref diagEnabled))
+        {
+            diagnosticLoggingService.IsEnabled = diagEnabled;
+        }
+
+        if (diagEnabled)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(0.3f, 1, 0.3f, 1), "Active");
+            ImGui.TextDisabled("Events logged to Dalamud log. Filter: [DIAG]");
+        }
     }
 
     // ── Dry Run ──────────────────────────────────────────────────────

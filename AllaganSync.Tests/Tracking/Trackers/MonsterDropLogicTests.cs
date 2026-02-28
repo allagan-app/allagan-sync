@@ -20,7 +20,7 @@ public class MonsterDropLogicTests
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryAdd(1001, 2);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
@@ -38,28 +38,57 @@ public class MonsterDropLogicTests
     }
 
     [Fact]
-    public void WindowExtension_SecondDeathExtendsWindow()
+    public void SameTickDeaths_BatchedTogether()
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 1000;
+        currentTick += 5;
         logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 5;
         logic.ProcessInventoryAdd(1001, 1);
 
-        // Original window (1000 + 1500 = 2500) would have expired,
-        // but second death extends to (2000 + 1500 = 3500)
-        currentTick = 2000 + MonsterDropLogic.CollectWindowMs;
+        currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
         var result = logic.ProcessTick();
 
         Assert.NotNull(result);
         var payload = Assert.IsType<MonsterDropPayload>(result.Payload);
         Assert.Equal(2, payload.Deaths.Count);
         Assert.Equal(50u, payload.Deaths[0].BnpcBaseId);
-        Assert.Equal(1050u, payload.Deaths[0].BnpcNameId);
         Assert.Equal(51u, payload.Deaths[1].BnpcBaseId);
-        Assert.Equal(1051u, payload.Deaths[1].BnpcNameId);
+        Assert.Single(payload.Items);
+    }
+
+    [Fact]
+    public void DeathAfterWindowExpires_StartsNewEvent()
+    {
+        // First death at tick 1000
+        logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
+        currentTick += 10;
+        logic.ProcessInventoryAdd(1001, 1);
+
+        // Window expires, ProcessTick fires first event
+        currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
+        var first = logic.ProcessTick();
+        Assert.NotNull(first);
+
+        // Second death after window — starts a new event
+        currentTick += 500;
+        var secondStart = currentTick;
+        logic.RecordDeath(bnpcBaseId: 99, bnpcNameId: 1099, territory: 800, map: 900);
+        currentTick += 10;
+        logic.ProcessInventoryAdd(2002, 3);
+
+        currentTick = secondStart + MonsterDropLogic.CollectWindowMs;
+        var second = logic.ProcessTick();
+
+        Assert.NotNull(second);
+        var payload = Assert.IsType<MonsterDropPayload>(second.Payload);
+        Assert.Single(payload.Deaths);
+        Assert.Equal(99u, payload.Deaths[0].BnpcBaseId);
+        Assert.Single(payload.Items);
+        Assert.Equal(2002u, payload.Items[0].ItemId);
+        Assert.Equal((ushort)800, payload.TerritoryTypeId);
     }
 
     [Fact]
@@ -68,19 +97,19 @@ public class MonsterDropLogicTests
         // First death at tick 1000
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        // Second death at tick 1500
-        currentTick = 1500;
+        // Second death at tick 1005 (same tick batch)
+        currentTick = 1005;
         logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 500, map: 600);
 
-        // Item at tick 1600
-        currentTick = 1600;
+        // Item at tick 1010
+        currentTick = 1010;
         logic.ProcessInventoryAdd(1001, 1);
 
-        // Item at tick 1800
-        currentTick = 1800;
+        // Item at tick 1015
+        currentTick = 1015;
         logic.ProcessInventoryAdd(1002, 2);
 
-        currentTick = 1500 + MonsterDropLogic.CollectWindowMs;
+        currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
         var result = logic.ProcessTick();
 
         Assert.NotNull(result);
@@ -88,11 +117,11 @@ public class MonsterDropLogicTests
 
         // Death offsets relative to windowStartTick (1000)
         Assert.Equal(0, payload.Deaths[0].OffsetMs);
-        Assert.Equal(500, payload.Deaths[1].OffsetMs);
+        Assert.Equal(5, payload.Deaths[1].OffsetMs);
 
         // Item offsets relative to windowStartTick (1000)
-        Assert.Equal(600, payload.Items[0].OffsetMs);
-        Assert.Equal(800, payload.Items[1].OffsetMs);
+        Assert.Equal(10, payload.Items[0].OffsetMs);
+        Assert.Equal(15, payload.Items[1].OffsetMs);
     }
 
     [Fact]
@@ -129,13 +158,13 @@ public class MonsterDropLogicTests
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 5;
         logic.RecordDeath(bnpcBaseId: 51, bnpcNameId: 1051, territory: 501, map: 601);
 
-        currentTick += 100;
+        currentTick += 5;
         logic.ProcessInventoryAdd(1001, 1);
 
-        currentTick = 1100 + MonsterDropLogic.CollectWindowMs;
+        currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
         var result = logic.ProcessTick();
 
         Assert.NotNull(result);
@@ -149,7 +178,7 @@ public class MonsterDropLogicTests
     {
         // First window
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryAdd(1001, 1);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
@@ -160,7 +189,7 @@ public class MonsterDropLogicTests
         currentTick += 100;
         var secondStart = currentTick;
         logic.RecordDeath(bnpcBaseId: 99, bnpcNameId: 1099, territory: 800, map: 900);
-        currentTick += 50;
+        currentTick += 10;
         logic.ProcessInventoryAdd(2002, 3);
 
         currentTick = secondStart + MonsterDropLogic.CollectWindowMs;
@@ -180,7 +209,7 @@ public class MonsterDropLogicTests
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 5, newItemId: 1001, newQuantity: 8);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
@@ -198,7 +227,7 @@ public class MonsterDropLogicTests
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 5, newItemId: 2002, newQuantity: 7);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
@@ -217,7 +246,7 @@ public class MonsterDropLogicTests
         logic.ProcessInventoryAdd(1001, 1);
 
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryAdd(2002, 1);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;
@@ -234,7 +263,7 @@ public class MonsterDropLogicTests
     {
         logic.RecordDeath(bnpcBaseId: 50, bnpcNameId: 1050, territory: 500, map: 600);
 
-        currentTick += 100;
+        currentTick += 10;
         logic.ProcessInventoryChange(oldItemId: 1001, oldQuantity: 10, newItemId: 1001, newQuantity: 5);
 
         currentTick = 1000 + MonsterDropLogic.CollectWindowMs;

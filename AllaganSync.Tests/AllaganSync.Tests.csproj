@@ -12,6 +12,8 @@
     <Compile Include="..\AllaganSync\Tracking\Trackers\MonsterDropLogic.cs" Link="Linked\MonsterDropLogic.cs" />
     <Compile Include="..\AllaganSync\Models\ChestLootPayload.cs" Link="Linked\ChestLootPayload.cs" />
     <Compile Include="..\AllaganSync\Models\MonsterDropPayload.cs" Link="Linked\MonsterDropPayload.cs" />
+    <Compile Include="..\AllaganSync\Tracking\Trackers\DutyRewardLogic.cs" Link="Linked\DutyRewardLogic.cs" />
+    <Compile Include="..\AllaganSync\Models\DutyRewardPayload.cs" Link="Linked\DutyRewardPayload.cs" />
     <Compile Include="..\AllaganSync\Models\TrackedEvent.cs" Link="Linked\TrackedEvent.cs" />
   </ItemGroup>
 
