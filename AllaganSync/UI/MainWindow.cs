@@ -16,14 +16,22 @@ public class MainWindow : Window, IDisposable
     private readonly DebugTab debugTab;
 #endif
 
-    public MainWindow(ConfigurationService configService, AllaganSyncService syncService, AllaganApiClient apiClient, EventTrackingService eventTrackingService, Action? openSettings = null)
+    public MainWindow(
+        ConfigurationService configService,
+        AllaganSyncService syncService,
+        AllaganApiClient apiClient,
+        EventTrackingService eventTrackingService,
+#if DEBUG
+        DiagnosticLoggingService? diagnosticLoggingService = null,
+#endif
+        Action? openSettings = null)
         : base("Allagan Sync###AllaganSyncMain")
     {
         infoTab = new InfoTab(configService, openSettings);
         collectionTab = new CollectionTab(configService, syncService, openSettings);
         eventsTab = new EventsTab(configService, eventTrackingService, openSettings);
 #if DEBUG
-        debugTab = new DebugTab(apiClient, configService, eventTrackingService);
+        debugTab = new DebugTab(apiClient, configService, eventTrackingService, diagnosticLoggingService);
 #endif
 
         Size = new Vector2(500, 400);
