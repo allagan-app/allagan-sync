@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
+using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using AllaganSync.Collecting.Collectors;
@@ -47,6 +48,8 @@ public sealed class Plugin : IDalamudPlugin
         IGameInventory gameInventory,
         IUnlockState unlockState,
         IObjectTable objectTable,
+        IAddonLifecycle addonLifecycle,
+        IGameGui gameGui,
         IGameInteropProvider gameInteropProvider)
     {
         this.pluginInterface = pluginInterface;
@@ -99,6 +102,8 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(monsterDropTracker);
         var dutyRewardTracker = new DutyRewardTracker(log, clientState, dutyState, gameInventory, framework);
         eventTrackingService.RegisterTracker(dutyRewardTracker);
+        var tripleTriadDuelTracker = new TripleTriadDuelTracker(log, addonLifecycle, gameGui);
+        eventTrackingService.RegisterTracker(tripleTriadDuelTracker);
         containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
         eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
