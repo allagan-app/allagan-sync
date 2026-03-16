@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using AllaganSync.Models;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Network;
@@ -41,11 +44,18 @@ public unsafe class ChestLootTracker : IGameEventTracker
         int a16,
         uint a17);
 
+    /// <summary>Chat type for "Unable to obtain X. You already possess one." (unique item already owned).</summary>
+    private const int ChatTypeAlreadyObtained = 2108;
+
+    /// <summary>Chat type for "You obtain X." (item received from chest).</summary>
+    private const int ChatTypeItemObtained = 2110;
+
     private readonly IPluginLog log;
     private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
     private readonly IGameInventory gameInventory;
     private readonly IFramework framework;
+    private readonly IChatGui chatGui;
     private readonly ChestLootLogic logic = new();
     private Hook<PacketDispatcher.Delegates.HandleSpawnTreasurePacket>? spawnTreasureHook;
     private Hook<OpenTreasureDelegate>? openTreasureHook;
@@ -65,6 +75,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
         IObjectTable objectTable,
         IGameInventory gameInventory,
         IFramework framework,
+        IChatGui chatGui,
         IGameInteropProvider gameInteropProvider)
     {
         this.log = log;
@@ -72,6 +83,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
         this.objectTable = objectTable;
         this.gameInventory = gameInventory;
         this.framework = framework;
+        this.chatGui = chatGui;
 
         var hooksInstalled = 0;
 
@@ -115,6 +127,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
         }
 
         gameInventory.InventoryChangedRaw += OnInventoryChanged;
+        chatGui.ChatMessage += OnChatMessage;
         framework.Update += OnFrameworkUpdate;
 
         IsAvailable = hooksInstalled > 0;
@@ -217,6 +230,25 @@ public unsafe class ChestLootTracker : IGameEventTracker
         }
     }
 
+    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+    {
+        if (!IsEnabled || !logic.IsCollecting)
+            return;
+
+        if ((int)type is not (ChatTypeAlreadyObtained or ChatTypeItemObtained))
+            return;
+
+        foreach (var payload in message.Payloads)
+        {
+            if (payload is ItemPayload itemPayload)
+            {
+                logic.ProcessChatItem(itemPayload.ItemId);
+                log.Debug($"ChestLootTracker: Chat item detected — type={(int)type}, itemId={itemPayload.ItemId}");
+                break;
+            }
+        }
+    }
+
     private void OnFrameworkUpdate(IFramework _)
     {
         var trackedEvent = logic.ProcessTick();
@@ -232,6 +264,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
     public void Dispose()
     {
         gameInventory.InventoryChangedRaw -= OnInventoryChanged;
+        chatGui.ChatMessage -= OnChatMessage;
         framework.Update -= OnFrameworkUpdate;
         spawnTreasureHook?.Dispose();
         openTreasureHook?.Dispose();

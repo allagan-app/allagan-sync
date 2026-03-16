@@ -21,6 +21,7 @@ internal class ChestLootLogic
     private byte pendingCofferKind;
     private long collectStartTick;
     private readonly List<(uint ItemId, int Quantity)> pendingItems = [];
+    private readonly List<uint> pendingChatItems = [];
     private readonly object pendingLock = new();
 
     private readonly Dictionary<uint, Dictionary<uint, (uint ItemId, ushort ItemCount)>> lootAddedByChest = [];
@@ -49,6 +50,7 @@ internal class ChestLootLogic
         lock (pendingLock)
         {
             pendingItems.Clear();
+            pendingChatItems.Clear();
             collectStartTick = getTick();
         }
     }
@@ -101,6 +103,17 @@ internal class ChestLootLogic
         }
     }
 
+    internal void ProcessChatItem(uint itemId)
+    {
+        if (collectStartTick == 0)
+            return;
+
+        lock (pendingLock)
+        {
+            pendingChatItems.Add(itemId);
+        }
+    }
+
     internal TrackedEvent? ProcessTick()
     {
         if (collectStartTick == 0)
@@ -110,10 +123,13 @@ internal class ChestLootLogic
             return null;
 
         (uint ItemId, int Quantity)[] inventorySnapshot;
+        uint[] chatSnapshot;
         lock (pendingLock)
         {
             inventorySnapshot = [.. pendingItems];
+            chatSnapshot = [.. pendingChatItems];
             pendingItems.Clear();
+            pendingChatItems.Clear();
             collectStartTick = 0;
         }
 
@@ -123,7 +139,9 @@ internal class ChestLootLogic
 
         var items = lootAddedItems.Length > 0
             ? lootAddedItems.Select(item => new ChestLootItem { ItemId = item.ItemId, Count = item.ItemCount }).ToList()
-            : inventorySnapshot.Select(item => new ChestLootItem { ItemId = item.ItemId, Count = item.Quantity }).ToList();
+            : chatSnapshot.Length > 0
+                ? chatSnapshot.Select(itemId => new ChestLootItem { ItemId = itemId, Count = 1 }).ToList()
+                : inventorySnapshot.Select(item => new ChestLootItem { ItemId = item.ItemId, Count = item.Quantity }).ToList();
 
         var payload = new ChestLootPayload
         {
