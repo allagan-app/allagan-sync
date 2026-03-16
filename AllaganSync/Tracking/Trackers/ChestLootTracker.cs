@@ -44,6 +44,12 @@ public unsafe class ChestLootTracker : IGameEventTracker
         int a16,
         uint a17);
 
+    /// <summary>Chat type for "Unable to obtain X. You already possess one." (unique item already owned).</summary>
+    private const int ChatTypeAlreadyObtained = 2108;
+
+    /// <summary>Chat type for "You obtain X." (item received from chest).</summary>
+    private const int ChatTypeItemObtained = 2110;
+
     private readonly IPluginLog log;
     private readonly IClientState clientState;
     private readonly IObjectTable objectTable;
@@ -229,7 +235,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
         if (!IsEnabled || !logic.IsCollecting)
             return;
 
-        if ((int)type is not (2108 or 2110))
+        if ((int)type is not (ChatTypeAlreadyObtained or ChatTypeItemObtained))
             return;
 
         foreach (var payload in message.Payloads)
