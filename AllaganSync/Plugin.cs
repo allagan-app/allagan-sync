@@ -50,6 +50,7 @@ public sealed class Plugin : IDalamudPlugin
         IObjectTable objectTable,
         IAddonLifecycle addonLifecycle,
         IGameGui gameGui,
+        IChatGui chatGui,
         IGameInteropProvider gameInteropProvider)
     {
         this.pluginInterface = pluginInterface;
@@ -96,7 +97,7 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(retainerMissionTracker);
         var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterSpawnTracker);
-        var chestLootTracker = new ChestLootTracker(log, clientState, objectTable, gameInventory, framework, gameInteropProvider);
+        var chestLootTracker = new ChestLootTracker(log, clientState, objectTable, gameInventory, framework, chatGui, gameInteropProvider);
         eventTrackingService.RegisterTracker(chestLootTracker);
         var monsterDropTracker = new MonsterDropTracker(log, clientState, objectTable, gameInventory, framework, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterDropTracker);
