@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
 using AchievementState = FFXIVClientStructs.FFXIV.Client.Game.UI.Achievement;
 
@@ -11,6 +13,17 @@ public class AchievementCollector(IDataManager dataManager, IPluginLog log) : IC
     public string CollectionKey => "achievements";
     public string DisplayName => "Achievements";
     public bool NeedsDataRequest => true;
+
+    public unsafe System.Action? OpenGameUi => () =>
+    {
+        var agentModule = AgentModule.Instance();
+        if (agentModule == null)
+            return;
+
+        var agent = agentModule->GetAgentByInternalId(AgentId.Achievement);
+        if (agent != null)
+            agent->Show();
+    };
 
     public unsafe bool IsDataReady
     {
