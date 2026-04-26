@@ -12,6 +12,12 @@ public class CharacterConfig
     // Collection sync toggles (dictionary-based, default true for unknown keys)
     public Dictionary<string, bool> SyncCollections { get; set; } = new();
 
+    // Gear item inventory source toggles (dictionary-based, default true for unknown keys)
+    public Dictionary<string, bool> SyncItemSources { get; set; } = new();
+
+    // Cached retainer inventory data (keyed by RetainerId)
+    public Dictionary<ulong, RetainerItemCache> RetainerItemCaches { get; set; } = new();
+
     // Event Tracking
     public bool TrackingEnabled { get; set; } = false;
     public bool TrackingPaused { get; set; } = false;
@@ -39,6 +45,16 @@ public class CharacterConfig
     public void SetEventEnabled(string eventKey, bool enabled)
     {
         TrackEvents[eventKey] = enabled;
+    }
+
+    public bool IsItemSourceEnabled(string sourceKey)
+    {
+        return !SyncItemSources.TryGetValue(sourceKey, out var enabled) || enabled;
+    }
+
+    public void SetItemSourceEnabled(string sourceKey, bool enabled)
+    {
+        SyncItemSources[sourceKey] = enabled;
     }
 
     // Legacy properties for deserialization of v1 configs
@@ -108,6 +124,13 @@ public class CharacterConfig
             SyncCollections[key] = legacyValue.Value;
         }
     }
+}
+
+public class RetainerItemCache
+{
+    public string Name { get; set; } = string.Empty;
+    public List<uint> ItemIds { get; set; } = [];
+    public long CachedAtUnix { get; set; }
 }
 
 public class Configuration : IPluginConfiguration

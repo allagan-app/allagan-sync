@@ -27,6 +27,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly InstanceSessionService instanceSessionService;
     private readonly EventTrackingService eventTrackingService;
     private readonly ContainerOpenTracker containerOpenTracker;
+    private readonly GearItemCollector gearItemCollector;
     private readonly WindowSystem windowSystem = new("AllaganSync");
     private readonly MainWindow mainWindow;
     private readonly SettingsWindow settingsWindow;
@@ -80,6 +81,8 @@ public sealed class Plugin : IDalamudPlugin
         syncService.RegisterCollector(new FishCollector(dataManager));
         syncService.RegisterCollector(new BlueMageSpellCollector(dataManager, unlockState));
         syncService.RegisterCollector(new CharacterCustomizationCollector(dataManager, unlockState));
+        gearItemCollector = new GearItemCollector(dataManager, log, configService, framework);
+        syncService.RegisterCollector(gearItemCollector);
 
         // Instance session tracking
         instanceSessionService = new InstanceSessionService(clientState, condition, log);
@@ -245,6 +248,7 @@ public sealed class Plugin : IDalamudPlugin
 #if DEBUG
         diagnosticLoggingService?.Dispose();
 #endif
+        gearItemCollector.Dispose();
         instanceSessionService.Dispose();
         eventTrackingService.Dispose();
         apiClient.Dispose();

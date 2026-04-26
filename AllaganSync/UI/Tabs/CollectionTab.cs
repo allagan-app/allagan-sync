@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using System.Numerics;
+using AllaganSync.Collecting;
+using AllaganSync.Collecting.Collectors;
 using AllaganSync.Services;
 using AllaganSync.UI;
 using Dalamud.Bindings.ImGui;
@@ -55,6 +58,12 @@ public class CollectionTab
 
             foreach (var collector in syncService.Collectors)
             {
+                if (collector is GearItemCollector gearCollector)
+                {
+                    DrawGearSection(gearCollector, charConfig);
+                    continue;
+                }
+
                 var counts = syncService.GetCounts(collector.CollectionKey);
                 string? warning = null;
                 string? tooltip = null;
@@ -110,6 +119,144 @@ public class CollectionTab
         }
 
         return changed;
+    }
+
+    private void DrawGearSection(GearItemCollector gearCollector, CharacterConfig charConfig)
+    {
+        var counts = syncService.GetCounts(gearCollector.CollectionKey);
+        var masterEnabled = charConfig.IsCollectionEnabled(gearCollector.CollectionKey);
+
+        // Summary row
+        ImGui.TableNextRow();
+
+        ImGui.TableNextColumn();
+        var open = ImGui.TreeNode("Gear Items");
+
+        ImGui.TableNextColumn();
+        if (counts.total > 0)
+            ImGui.Text($"{counts.unlocked}/{counts.total}");
+        else
+            ImGui.TextDisabled("--/--");
+
+        ImGui.TableNextColumn();
+        var newMasterValue = masterEnabled;
+        if (ImGui.Checkbox("##GearItems", ref newMasterValue))
+        {
+            charConfig.SetCollectionEnabled(gearCollector.CollectionKey, newMasterValue);
+            configService.Save();
+        }
+
+        ImGui.TableNextColumn(); // Actions column (empty for gear)
+
+        if (open)
+        {
+            var sourceCounts = gearCollector.GetSourceCounts();
+
+            // Separate live sources from retainer sources
+            var liveSources = sourceCounts.Where(s => !s.Source.Key.StartsWith("retainer_")).ToList();
+            var retainerSources = sourceCounts.Where(s => s.Source.Key.StartsWith("retainer_")).ToList();
+
+            foreach (var (source, found, loaded) in liveSources)
+            {
+                DrawInventorySourceRow(gearCollector, source, found, loaded);
+            }
+
+            // Retainers group
+            if (retainerSources.Count > 0)
+            {
+                var retainerTotal = retainerSources.Sum(r => r.Found);
+
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text($"  Retainers");
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1), "(cached)");
+
+                ImGui.TableNextColumn();
+                ImGui.Text($"{retainerTotal}");
+
+                ImGui.TableNextColumn();
+                var retainersEnabled = gearCollector.IsSourceEnabled("retainers");
+                var newRetainersValue = retainersEnabled;
+                if (ImGui.Checkbox("##retainers", ref newRetainersValue))
+                {
+                    gearCollector.SetSourceEnabled("retainers", newRetainersValue);
+                }
+
+                ImGui.TableNextColumn();
+
+                foreach (var (source, found, _) in retainerSources)
+                {
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"    {source.DisplayName}");
+
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"{found}");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TableNextColumn();
+                }
+            }
+            else
+            {
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text("  Retainers");
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "(no data)");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Open a retainer's inventory to scan and cache their items.");
+
+                ImGui.TableNextColumn();
+                ImGui.TextDisabled("--");
+
+                ImGui.TableNextColumn();
+                var retainersEnabled = gearCollector.IsSourceEnabled("retainers");
+                var newRetainersValue = retainersEnabled;
+                if (ImGui.Checkbox("##retainers", ref newRetainersValue))
+                {
+                    gearCollector.SetSourceEnabled("retainers", newRetainersValue);
+                }
+
+                ImGui.TableNextColumn();
+            }
+
+            ImGui.TreePop();
+        }
+    }
+
+    private static void DrawInventorySourceRow(GearItemCollector gearCollector, InventorySource source, int found, bool loaded)
+    {
+        ImGui.TableNextRow();
+
+        ImGui.TableNextColumn();
+        ImGui.Text($"  {source.DisplayName}");
+        if (!loaded)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "(not loaded)");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("This inventory is not loaded yet. Open it in-game to load the data.");
+        }
+
+        ImGui.TableNextColumn();
+        ImGui.Text($"{found}");
+
+        ImGui.TableNextColumn();
+        var sourceEnabled = gearCollector.IsSourceEnabled(source.Key);
+        var newSourceValue = sourceEnabled;
+        if (ImGui.Checkbox($"##{source.Key}", ref newSourceValue))
+        {
+            gearCollector.SetSourceEnabled(source.Key, newSourceValue);
+        }
+
+        ImGui.TableNextColumn();
+        if (!loaded && source.OpenGameUi != null)
+        {
+            if (ImGui.SmallButton($"Open##{source.Key}"))
+                source.OpenGameUi();
+        }
     }
 
     private void DrawActionButtons(CharacterConfig charConfig)
