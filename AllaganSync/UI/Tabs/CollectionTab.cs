@@ -45,11 +45,12 @@ public class CollectionTab
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("CollectionTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable("CollectionTable", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
         {
             ImGui.TableSetupColumn("Collection", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Progress", ImGuiTableColumnFlags.WidthFixed, 100);
             ImGui.TableSetupColumn("Sync", ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("##Actions", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableHeadersRow();
 
             foreach (var collector in syncService.Collectors)
@@ -57,15 +58,16 @@ public class CollectionTab
                 var counts = syncService.GetCounts(collector.CollectionKey);
                 string? warning = null;
                 string? tooltip = null;
+                var needsOpen = collector.NeedsDataRequest && !collector.IsDataReady;
 
-                if (collector.NeedsDataRequest && !collector.IsDataReady)
+                if (needsOpen)
                 {
                     warning = "Data not loaded";
                     tooltip = $"Open the {collector.DisplayName} window in-game to load the data.";
                 }
 
                 var enabled = charConfig.IsCollectionEnabled(collector.CollectionKey);
-                if (DrawCollectionRow(collector.DisplayName, counts.unlocked, counts.total, enabled, out var newValue, warning, tooltip))
+                if (DrawCollectionRow(collector.DisplayName, counts.unlocked, counts.total, enabled, out var newValue, warning, tooltip, needsOpen ? collector.OpenGameUi : null))
                 {
                     charConfig.SetCollectionEnabled(collector.CollectionKey, newValue);
                     configService.Save();
@@ -76,7 +78,7 @@ public class CollectionTab
         }
     }
 
-    private static bool DrawCollectionRow(string name, int unlocked, int total, bool syncEnabled, out bool newValue, string? warning = null, string? tooltip = null)
+    private static bool DrawCollectionRow(string name, int unlocked, int total, bool syncEnabled, out bool newValue, string? warning = null, string? tooltip = null, Action? openGameUi = null)
     {
         ImGui.TableNextRow();
 
@@ -98,7 +100,16 @@ public class CollectionTab
 
         ImGui.TableNextColumn();
         newValue = syncEnabled;
-        return ImGui.Checkbox($"##{name}", ref newValue);
+        var changed = ImGui.Checkbox($"##{name}", ref newValue);
+
+        ImGui.TableNextColumn();
+        if (openGameUi != null)
+        {
+            if (ImGui.SmallButton($"Open##{name}"))
+                openGameUi();
+        }
+
+        return changed;
     }
 
     private void DrawActionButtons(CharacterConfig charConfig)
