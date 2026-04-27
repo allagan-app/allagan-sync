@@ -18,8 +18,8 @@ public class GearItemCollector : ICollectionCollector, IDisposable
     private HashSet<uint>? collectableItemIds;
     private Dictionary<uint, List<uint>>? outfitItemMap; // MirageStoreSetItem RowId → list of item RowIds
     private ulong lastScannedRetainerId;
-    private bool glamourDresserCached;
-    private bool cabinetCached;
+    private bool wasPrismBoxLoaded;
+    private bool wasCabinetLoaded;
 
     public GearItemCollector(
         IDataManager dataManager,
@@ -185,12 +185,12 @@ public class GearItemCollector : ICollectionCollector, IDisposable
             return result;
 
         // Glamour Dresser
-        var glamourLoaded = charConfig.GlamourDresserItemIds.Count > 0 || glamourDresserCached;
+        var glamourLoaded = charConfig.GlamourDresserItemIds.Count > 0;
         var glamourCount = charConfig.GlamourDresserItemIds.Count(id => collectableIds.Contains(id));
         result.Add((new InventorySource("glamour_dresser", "Glamour Dresser", []), glamourCount, glamourLoaded));
 
         // Cabinet / Armoire
-        var cabinetLoaded = charConfig.CabinetItemIds.Count > 0 || cabinetCached;
+        var cabinetLoaded = charConfig.CabinetItemIds.Count > 0;
         var cabinetCount = charConfig.CabinetItemIds.Count(id => collectableIds.Contains(id));
         result.Add((new InventorySource("cabinet", "Armoire", []), cabinetCount, cabinetLoaded));
 
@@ -313,12 +313,17 @@ public class GearItemCollector : ICollectionCollector, IDisposable
 
     private unsafe void ScanGlamourDresserIfNeeded()
     {
-        if (glamourDresserCached)
-            return;
-
         var mirageManager = MirageManager.Instance();
-        if (mirageManager == null || !mirageManager->PrismBoxLoaded)
+        var isLoaded = mirageManager != null && mirageManager->PrismBoxLoaded;
+
+        // Edge detection: scan when PrismBoxLoaded transitions from false to true
+        if (!isLoaded || wasPrismBoxLoaded)
+        {
+            wasPrismBoxLoaded = isLoaded;
             return;
+        }
+
+        wasPrismBoxLoaded = true;
 
         log.Info("[GearItemCollector] Scanning glamour dresser");
 
@@ -355,19 +360,22 @@ public class GearItemCollector : ICollectionCollector, IDisposable
         charConfig.GlamourDresserItemIds = foundItems.ToList();
         charConfig.GlamourDresserCachedAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         configService.Save();
-        glamourDresserCached = true;
 
         log.Info("[GearItemCollector] Cached {Count} collectable items from glamour dresser", foundItems.Count);
     }
 
     private unsafe void ScanCabinetIfNeeded()
     {
-        if (cabinetCached)
-            return;
-
         var uiState = UIState.Instance();
-        if (uiState == null || !uiState->Cabinet.IsCabinetLoaded())
+        var isLoaded = uiState != null && uiState->Cabinet.IsCabinetLoaded();
+
+        if (!isLoaded || wasCabinetLoaded)
+        {
+            wasCabinetLoaded = isLoaded;
             return;
+        }
+
+        wasCabinetLoaded = true;
 
         log.Info("[GearItemCollector] Scanning armoire");
 
@@ -395,7 +403,6 @@ public class GearItemCollector : ICollectionCollector, IDisposable
         charConfig.CabinetItemIds = foundItems.ToList();
         charConfig.CabinetCachedAtUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         configService.Save();
-        cabinetCached = true;
 
         log.Info("[GearItemCollector] Cached {Count} collectable items from armoire", foundItems.Count);
     }
