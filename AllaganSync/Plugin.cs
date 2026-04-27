@@ -81,7 +81,7 @@ public sealed class Plugin : IDalamudPlugin
         syncService.RegisterCollector(new FishCollector(dataManager));
         syncService.RegisterCollector(new BlueMageSpellCollector(dataManager, unlockState));
         syncService.RegisterCollector(new CharacterCustomizationCollector(dataManager, unlockState));
-        gearItemCollector = new GearItemCollector(dataManager, log, configService, framework);
+        gearItemCollector = new GearItemCollector(dataManager, log, configService, framework, gameInteropProvider);
         syncService.RegisterCollector(gearItemCollector);
 
         // Instance session tracking
