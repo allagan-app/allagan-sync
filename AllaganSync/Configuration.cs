@@ -15,8 +15,12 @@ public class CharacterConfig
     // Gear item inventory source toggles (dictionary-based, default true for unknown keys)
     public Dictionary<string, bool> SyncItemSources { get; set; } = new();
 
-    // Cached retainer inventory data (keyed by RetainerId)
+    // Cached inventory data for gear collection
     public Dictionary<ulong, RetainerItemCache> RetainerItemCaches { get; set; } = new();
+    public List<uint> GlamourDresserItemIds { get; set; } = [];
+    public long GlamourDresserCachedAtUnix { get; set; }
+    public List<uint> CabinetItemIds { get; set; } = [];
+    public long CabinetCachedAtUnix { get; set; }
 
     // Event Tracking
     public bool TrackingEnabled { get; set; } = false;
