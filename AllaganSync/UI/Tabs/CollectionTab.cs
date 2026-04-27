@@ -153,8 +153,8 @@ public class CollectionTab
             var sourceCounts = gearCollector.GetSourceCounts();
 
             // Separate live sources from retainer sources
-            var liveSources = sourceCounts.Where(s => !s.Source.Key.StartsWith("retainer_")).ToList();
-            var retainerSources = sourceCounts.Where(s => s.Source.Key.StartsWith("retainer_")).ToList();
+            var liveSources = sourceCounts.Where(s => !s.Source.Key.StartsWith(InventorySource.RetainerKeyPrefix)).ToList();
+            var retainerSources = sourceCounts.Where(s => s.Source.Key.StartsWith(InventorySource.RetainerKeyPrefix)).ToList();
 
             foreach (var (source, found, loaded) in liveSources)
             {

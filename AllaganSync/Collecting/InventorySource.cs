@@ -6,6 +6,8 @@ namespace AllaganSync.Collecting;
 
 public record InventorySource(string Key, string DisplayName, InventoryType[] Types)
 {
+    public const string RetainerKeyPrefix = "retainer_";
+
     public unsafe Action? OpenGameUi { get; init; }
 
     public static readonly InventorySource[] All =

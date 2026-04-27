@@ -107,14 +107,20 @@ public class GearItemCollector : ICollectionCollector, IDisposable
             if (IsSourceEnabled("glamour_dresser"))
             {
                 foreach (var itemId in charConfig.GlamourDresserItemIds)
-                    found.Add(itemId);
+                {
+                    if (collectableIds.Contains(itemId))
+                        found.Add(itemId);
+                }
             }
 
             // Include cached cabinet items
             if (IsSourceEnabled("cabinet"))
             {
                 foreach (var itemId in charConfig.CabinetItemIds)
-                    found.Add(itemId);
+                {
+                    if (collectableIds.Contains(itemId))
+                        found.Add(itemId);
+                }
             }
         }
 
@@ -192,7 +198,7 @@ public class GearItemCollector : ICollectionCollector, IDisposable
         foreach (var (retainerId, cache) in charConfig.RetainerItemCaches)
         {
             var found = cache.ItemIds.Count(id => collectableIds.Contains(id));
-            var source = new InventorySource($"retainer_{retainerId}", $"Retainer: {cache.Name}", []);
+            var source = new InventorySource($"{InventorySource.RetainerKeyPrefix}{retainerId}", $"Retainer: {cache.Name}", []);
             result.Add((source, found, true));
         }
 
