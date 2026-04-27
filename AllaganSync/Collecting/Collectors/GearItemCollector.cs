@@ -2,15 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using AllaganSync.Services;
+using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
 
 namespace AllaganSync.Collecting.Collectors;
 
-public class GearItemCollector : ICollectionCollector, IDisposable
+public unsafe class GearItemCollector : ICollectionCollector, IDisposable
 {
+    private delegate void PrismBoxUpdateItemsDelegate(AgentMiragePrismPrismBox* thisPtr, bool resetTabIndex, bool a2);
+    private delegate int MoveItemSlotDelegate(InventoryManager* thisPtr, InventoryType srcContainer, ushort srcSlot, InventoryType dstContainer, ushort dstSlot, bool a6);
+
     private readonly IDataManager dataManager;
     private readonly IPluginLog log;
     private readonly ConfigurationService configService;
@@ -18,14 +23,18 @@ public class GearItemCollector : ICollectionCollector, IDisposable
     private HashSet<uint>? collectableItemIds;
     private Dictionary<uint, List<uint>>? outfitItemMap; // MirageStoreSetItem RowId → list of item RowIds
     private ulong lastScannedRetainerId;
-    private bool wasPrismBoxLoaded;
-    private bool wasCabinetLoaded;
+    private int lastCabinetHash;
+    private bool prismBoxDirty = true;
+    private bool retainerDirty;
+    private Hook<PrismBoxUpdateItemsDelegate>? prismBoxUpdateHook;
+    private Hook<MoveItemSlotDelegate>? moveItemSlotHook;
 
     public GearItemCollector(
         IDataManager dataManager,
         IPluginLog log,
         ConfigurationService configService,
-        IFramework framework)
+        IFramework framework,
+        IGameInteropProvider interopProvider)
     {
         this.dataManager = dataManager;
         this.log = log;
@@ -33,6 +42,51 @@ public class GearItemCollector : ICollectionCollector, IDisposable
         this.framework = framework;
 
         framework.Update += OnFrameworkUpdate;
+
+        try
+        {
+            prismBoxUpdateHook = interopProvider.HookFromAddress<PrismBoxUpdateItemsDelegate>(
+                (nint)AgentMiragePrismPrismBox.MemberFunctionPointers.UpdateItems,
+                OnPrismBoxUpdate);
+            prismBoxUpdateHook.Enable();
+            log.Info("[GearItemCollector] AgentMiragePrismPrismBox.UpdateItems hook installed");
+        }
+        catch (Exception ex)
+        {
+            log.Warning("[GearItemCollector] Failed to hook AgentMiragePrismPrismBox.UpdateItems: {Error}", ex.Message);
+        }
+
+        try
+        {
+            moveItemSlotHook = interopProvider.HookFromAddress<MoveItemSlotDelegate>(
+                (nint)InventoryManager.MemberFunctionPointers.MoveItemSlot,
+                OnMoveItemSlot);
+            moveItemSlotHook.Enable();
+            log.Info("[GearItemCollector] InventoryManager.MoveItemSlot hook installed");
+        }
+        catch (Exception ex)
+        {
+            log.Warning("[GearItemCollector] Failed to hook InventoryManager.MoveItemSlot: {Error}", ex.Message);
+        }
+    }
+
+    private void OnPrismBoxUpdate(AgentMiragePrismPrismBox* thisPtr, bool resetTabIndex, bool a2)
+    {
+        prismBoxUpdateHook!.Original(thisPtr, resetTabIndex, a2);
+        prismBoxDirty = true;
+    }
+
+    private int OnMoveItemSlot(InventoryManager* thisPtr, InventoryType srcContainer, ushort srcSlot, InventoryType dstContainer, ushort dstSlot, bool a6)
+    {
+        var result = moveItemSlotHook!.Original(thisPtr, srcContainer, srcSlot, dstContainer, dstSlot, a6);
+        if (IsRetainerInventory(srcContainer) || IsRetainerInventory(dstContainer))
+            retainerDirty = true;
+        return result;
+    }
+
+    private static bool IsRetainerInventory(InventoryType type)
+    {
+        return type >= InventoryType.RetainerPage1 && type <= InventoryType.RetainerPage7;
     }
 
     public string CollectionKey => "items";
@@ -249,8 +303,10 @@ public class GearItemCollector : ICollectionCollector, IDisposable
         }
 
         var retainerId = activeRetainer->RetainerId;
-        if (retainerId == lastScannedRetainerId)
+        if (retainerId == lastScannedRetainerId && !retainerDirty)
             return;
+
+        retainerDirty = false;
 
         var inventoryManager = InventoryManager.Instance();
         if (inventoryManager == null)
@@ -313,45 +369,51 @@ public class GearItemCollector : ICollectionCollector, IDisposable
 
     private unsafe void ScanGlamourDresserIfNeeded()
     {
-        var mirageManager = MirageManager.Instance();
-        var isLoaded = mirageManager != null && mirageManager->PrismBoxLoaded;
-
-        // Edge detection: scan when PrismBoxLoaded transitions from false to true
-        if (!isLoaded || wasPrismBoxLoaded)
-        {
-            wasPrismBoxLoaded = isLoaded;
+        if (!prismBoxDirty)
             return;
-        }
 
-        wasPrismBoxLoaded = true;
+        var mirageManager = MirageManager.Instance();
+        if (mirageManager == null || !mirageManager->PrismBoxLoaded)
+            return;
+
+        prismBoxDirty = false;
 
         log.Info("[GearItemCollector] Scanning glamour dresser");
 
         var collectableIds = GetCollectableItemIds();
         var outfitMap = GetOutfitItemMap();
         var foundItems = new HashSet<uint>();
-
-        // Scan individual items in the prism box
         var itemIds = mirageManager->PrismBoxItemIds;
+
+        var nonZeroSlots = 0;
+        var directMatches = 0;
+        var outfitExpansions = 0;
+
         for (var i = 0; i < itemIds.Length; i++)
         {
             var itemId = itemIds[i];
             if (itemId == 0)
                 continue;
 
+            nonZeroSlots++;
             var baseItemId = StripHqFlag(itemId);
 
-            // Check if it's a direct collectable item
             if (collectableIds.Contains(baseItemId))
+            {
                 foundItems.Add(baseItemId);
+                directMatches++;
+            }
 
-            // Check if it's an outfit (MirageStoreSetItem) — expand to all set items
             if (outfitMap.TryGetValue(baseItemId, out var setItems))
             {
+                outfitExpansions++;
                 foreach (var setItemId in setItems)
                     foundItems.Add(setItemId);
             }
         }
+
+        log.Info("[GearItemCollector] Glamour dresser: {Slots} non-zero slots, {Direct} direct matches, {Outfits} outfits, {Total} total items",
+            nonZeroSlots, directMatches, outfitExpansions, foundItems.Count);
 
         var charConfig = configService.CurrentCharacter;
         if (charConfig == null)
@@ -367,15 +429,19 @@ public class GearItemCollector : ICollectionCollector, IDisposable
     private unsafe void ScanCabinetIfNeeded()
     {
         var uiState = UIState.Instance();
-        var isLoaded = uiState != null && uiState->Cabinet.IsCabinetLoaded();
-
-        if (!isLoaded || wasCabinetLoaded)
-        {
-            wasCabinetLoaded = isLoaded;
+        if (uiState == null || !uiState->Cabinet.IsCabinetLoaded())
             return;
-        }
 
-        wasCabinetLoaded = true;
+        // Hash the underlying bit-array (132 bytes) — much cheaper than iterating items
+        var unlockedBytes = uiState->Cabinet.UnlockedItems;
+        var contentHash = 0;
+        for (var i = 0; i < unlockedBytes.Length; i++)
+            contentHash = HashCode.Combine(contentHash, unlockedBytes[i]);
+
+        if (contentHash == lastCabinetHash)
+            return;
+
+        lastCabinetHash = contentHash;
 
         log.Info("[GearItemCollector] Scanning armoire");
 
@@ -501,5 +567,7 @@ public class GearItemCollector : ICollectionCollector, IDisposable
     public void Dispose()
     {
         framework.Update -= OnFrameworkUpdate;
+        prismBoxUpdateHook?.Dispose();
+        moveItemSlotHook?.Dispose();
     }
 }
