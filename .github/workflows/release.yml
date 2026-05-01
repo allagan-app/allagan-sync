@@ -23,8 +23,14 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Download Dalamud
+        # Defaults to the stable distrib. During an API-level beta (when our
+        # SDK is on a newer api than dalamud stable), set the repo variable
+        # DALAMUD_ARCHIVE_URL to https://goatcorp.github.io/dalamud-distrib/stg/latest.zip
+        # in GitHub Settings — no workflow edit needed.
+        env:
+          DALAMUD_ARCHIVE_URL: ${{ vars.DALAMUD_ARCHIVE_URL || 'https://goatcorp.github.io/dalamud-distrib/latest.zip' }}
         run: |
-          curl -sL https://goatcorp.github.io/dalamud-distrib/latest.zip -o latest.zip
+          curl -sL "$DALAMUD_ARCHIVE_URL" -o latest.zip
           mkdir -p .dalamud
           unzip -o latest.zip -d .dalamud
 
