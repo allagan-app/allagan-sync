@@ -435,7 +435,7 @@ public unsafe class GearItemCollector : ICollectionCollector, IDisposable
         // Hash the underlying bit-array (132 bytes) — much cheaper than iterating items
         var unlockedBytes = uiState->Cabinet.UnlockedItems;
         var contentHash = 0;
-        for (var i = 0; i < unlockedBytes.Length; i++)
+        for (var i = 0; i < unlockedBytes.Count; i++)
             contentHash = HashCode.Combine(contentHash, unlockedBytes[i]);
 
         if (contentHash == lastCabinetHash)
@@ -457,7 +457,7 @@ public unsafe class GearItemCollector : ICollectionCollector, IDisposable
                 if (itemId == 0 || !collectableIds.Contains(itemId))
                     continue;
 
-                if (uiState->Cabinet.IsItemInCabinet((int)row.RowId))
+                if (uiState->Cabinet.IsItemInCabinet(row.RowId))
                     foundItems.Add(itemId);
             }
         }

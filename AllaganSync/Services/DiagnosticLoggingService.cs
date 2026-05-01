@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.DutyState;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Hooking;
@@ -156,7 +157,7 @@ public unsafe class DiagnosticLoggingService : IDisposable
 
     // ── Territory ────────────────────────────────────────────────────
 
-    private void OnTerritoryChanged(ushort territoryId)
+    private void OnTerritoryChanged(uint territoryId)
     {
         if (!enabled)
             return;
@@ -180,28 +181,28 @@ public unsafe class DiagnosticLoggingService : IDisposable
 
     // ── Duty Lifecycle ───────────────────────────────────────────────
 
-    private void OnDutyStarted(object? sender, ushort territoryId)
+    private void OnDutyStarted(IDutyStateEventArgs args)
     {
         if (!enabled)
             return;
 
         ResetBaseline();
-        Log("DUTY_STARTED", $"territoryId={territoryId}");
+        Log("DUTY_STARTED", $"territoryId={args.TerritoryType.RowId}");
     }
 
-    private void OnDutyCompleted(object? sender, ushort territoryId)
+    private void OnDutyCompleted(IDutyStateEventArgs args)
     {
-        Log("DUTY_COMPLETED", $"territoryId={territoryId}");
+        Log("DUTY_COMPLETED", $"territoryId={args.TerritoryType.RowId}");
     }
 
-    private void OnDutyWiped(object? sender, ushort territoryId)
+    private void OnDutyWiped(IDutyStateEventArgs args)
     {
-        Log("DUTY_WIPED", $"territoryId={territoryId}");
+        Log("DUTY_WIPED", $"territoryId={args.TerritoryType.RowId}");
     }
 
-    private void OnDutyRecommenced(object? sender, ushort territoryId)
+    private void OnDutyRecommenced(IDutyStateEventArgs args)
     {
-        Log("DUTY_RECOMMENCED", $"territoryId={territoryId}");
+        Log("DUTY_RECOMMENCED", $"territoryId={args.TerritoryType.RowId}");
     }
 
     // ── Monster Death (ActorControl category 0x6) ────────────────────

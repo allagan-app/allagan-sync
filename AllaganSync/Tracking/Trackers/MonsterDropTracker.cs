@@ -84,7 +84,7 @@ public unsafe class MonsterDropTracker : IGameEventTracker
             if (subKind is BattleNpcSubKind.Pet or BattleNpcSubKind.Buddy or BattleNpcSubKind.RaceChocobo)
                 return;
 
-            logic.RecordDeath(character.BaseId, character.NameId, clientState.TerritoryType, clientState.MapId);
+            logic.RecordDeath(character.BaseId, character.NameId, (ushort)clientState.TerritoryType, clientState.MapId);
         }
         catch (Exception ex)
         {
@@ -99,9 +99,6 @@ public unsafe class MonsterDropTracker : IGameEventTracker
 
         foreach (var evt in events)
         {
-            if (evt.Item.ContainerType == GameInventoryType.DamagedGear)
-                continue;
-
             switch (evt.Type)
             {
                 case GameInventoryEvent.Added when evt is InventoryItemAddedArgs { Item: var item }:

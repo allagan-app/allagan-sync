@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using AllaganSync.Models;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
-using Dalamud.Game.Text;
-using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Chat;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Hooking;
 using Dalamud.Plugin.Services;
@@ -158,7 +157,7 @@ public unsafe class ChestLootTracker : IGameEventTracker
             logic.ProcessChestOpen(
                 treasure->BaseId, targetId, (byte)treasure->CofferKind,
                 pos.X, pos.Y, pos.Z,
-                clientState.TerritoryType, clientState.MapId);
+                (ushort)clientState.TerritoryType, clientState.MapId);
 
             log.Debug($"ChestLootTracker: Chest opened — BaseId={treasure->BaseId}, CofferKind={treasure->CofferKind}");
         }
@@ -215,9 +214,6 @@ public unsafe class ChestLootTracker : IGameEventTracker
 
         foreach (var evt in events)
         {
-            if (evt.Item.ContainerType == GameInventoryType.DamagedGear)
-                continue;
-
             switch (evt.Type)
             {
                 case GameInventoryEvent.Added when evt is InventoryItemAddedArgs { Item: var item }:
@@ -230,20 +226,20 @@ public unsafe class ChestLootTracker : IGameEventTracker
         }
     }
 
-    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+    private void OnChatMessage(IHandleableChatMessage message)
     {
         if (!IsEnabled || !logic.IsCollecting)
             return;
 
-        if ((int)type is not (ChatTypeAlreadyObtained or ChatTypeItemObtained))
+        if ((int)message.LogKind is not (ChatTypeAlreadyObtained or ChatTypeItemObtained))
             return;
 
-        foreach (var payload in message.Payloads)
+        foreach (var payload in message.Message.Payloads)
         {
             if (payload is ItemPayload itemPayload)
             {
                 logic.ProcessChatItem(itemPayload.ItemId);
-                log.Debug($"ChestLootTracker: Chat item detected — type={(int)type}, itemId={itemPayload.ItemId}");
+                log.Debug($"ChestLootTracker: Chat item detected — type={(int)message.LogKind}, itemId={itemPayload.ItemId}");
                 break;
             }
         }

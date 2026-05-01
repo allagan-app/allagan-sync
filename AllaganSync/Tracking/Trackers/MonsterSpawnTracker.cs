@@ -99,7 +99,7 @@ public unsafe class MonsterSpawnTracker : IGameEventTracker
         spawnNpcHook!.Original(targetId, packet);
     }
 
-    private void OnTerritoryChanged(ushort territoryId)
+    private void OnTerritoryChanged(uint territoryId)
     {
         seenSpawns.Clear();
     }
