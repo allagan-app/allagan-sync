@@ -533,26 +533,38 @@ public unsafe class GearItemCollector : ICollectionCollector, IDisposable
 
         collectableItemIds = new HashSet<uint>();
 
-        var sheet = dataManager.GetExcelSheet<MirageStoreSetItem>();
-        if (sheet == null)
+        var mirageSheet = dataManager.GetExcelSheet<MirageStoreSetItem>();
+        if (mirageSheet == null)
         {
             log.Warning("[GearItemCollector] MirageStoreSetItem sheet not available");
-            return collectableItemIds;
+        }
+        else
+        {
+            foreach (var row in mirageSheet)
+            {
+                AddIfNonZero(row.MainHand.RowId);
+                AddIfNonZero(row.OffHand.RowId);
+                AddIfNonZero(row.Head.RowId);
+                AddIfNonZero(row.Body.RowId);
+                AddIfNonZero(row.Hands.RowId);
+                AddIfNonZero(row.Legs.RowId);
+                AddIfNonZero(row.Feet.RowId);
+                AddIfNonZero(row.Earrings.RowId);
+                AddIfNonZero(row.Necklace.RowId);
+                AddIfNonZero(row.Bracelets.RowId);
+                AddIfNonZero(row.Ring.RowId);
+            }
         }
 
-        foreach (var row in sheet)
+        var cabinetSheet = dataManager.GetExcelSheet<Lumina.Excel.Sheets.Cabinet>();
+        if (cabinetSheet == null)
         {
-            AddIfNonZero(row.MainHand.RowId);
-            AddIfNonZero(row.OffHand.RowId);
-            AddIfNonZero(row.Head.RowId);
-            AddIfNonZero(row.Body.RowId);
-            AddIfNonZero(row.Hands.RowId);
-            AddIfNonZero(row.Legs.RowId);
-            AddIfNonZero(row.Feet.RowId);
-            AddIfNonZero(row.Earrings.RowId);
-            AddIfNonZero(row.Necklace.RowId);
-            AddIfNonZero(row.Bracelets.RowId);
-            AddIfNonZero(row.Ring.RowId);
+            log.Warning("[GearItemCollector] Cabinet sheet not available");
+        }
+        else
+        {
+            foreach (var row in cabinetSheet)
+                AddIfNonZero(row.Item.RowId);
         }
 
         return collectableItemIds;
