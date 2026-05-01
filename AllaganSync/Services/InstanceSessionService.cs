@@ -23,7 +23,7 @@ public class InstanceSessionService : IDisposable
         EvaluateInstanceState();
     }
 
-    private void OnTerritoryChanged(ushort territoryId)
+    private void OnTerritoryChanged(uint territoryId)
     {
         EvaluateInstanceState();
     }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AllaganSync.Models;
+using Dalamud.Game.DutyState;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Plugin.Services;
@@ -53,11 +54,12 @@ public class DutyRewardTracker : IGameEventTracker
         framework.Update += OnFrameworkUpdate;
     }
 
-    private void OnDutyCompleted(object? sender, ushort territoryId)
+    private void OnDutyCompleted(IDutyStateEventArgs args)
     {
         if (!IsEnabled)
             return;
 
+        var territoryId = (ushort)args.TerritoryType.RowId;
         logic.ProcessDutyCompleted(territoryId, clientState.MapId);
         log.Debug($"DutyRewardTracker: Duty completed — TerritoryId={territoryId}");
     }

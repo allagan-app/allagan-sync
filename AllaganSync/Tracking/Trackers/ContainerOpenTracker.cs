@@ -98,9 +98,6 @@ public class ContainerOpenTracker : IGameEventTracker
         var changes = new Dictionary<uint, (int Added, int Removed)>();
         foreach (var evt in events)
         {
-            if (evt.Item.ContainerType == GameInventoryType.DamagedGear)
-                continue;
-
             switch (evt.Type)
             {
                 case GameInventoryEvent.Added when evt is InventoryItemAddedArgs { Item: var item }:
