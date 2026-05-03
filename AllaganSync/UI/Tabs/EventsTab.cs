@@ -9,6 +9,8 @@ namespace AllaganSync.UI.Tabs;
 
 public class EventsTab
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
     private readonly ConfigurationService configService;
     private readonly EventTrackingService eventTrackingService;
     private readonly Action? openSettings;
@@ -183,10 +185,10 @@ public class EventsTab
 
         try
         {
-            var json = JsonSerializer.Serialize(evt.Payload, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(evt.Payload, IndentedJsonOptions);
             ImGui.TextDisabled(json);
         }
-        catch
+        catch (JsonException)
         {
             ImGui.TextDisabled(evt.Payload?.ToString() ?? "(empty)");
         }
