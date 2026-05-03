@@ -100,8 +100,6 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(retainerMissionTracker);
         var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterSpawnTracker);
-        var chestLootTracker = new ChestLootTracker(log, clientState, objectTable, gameInventory, framework, chatGui, gameInteropProvider);
-        eventTrackingService.RegisterTracker(chestLootTracker);
         var monsterDropTracker = new MonsterDropTracker(log, clientState, objectTable, gameInventory, framework, gameInteropProvider);
         eventTrackingService.RegisterTracker(monsterDropTracker);
         var dutyRewardTracker = new DutyRewardTracker(log, clientState, dutyState, gameInventory, framework);
