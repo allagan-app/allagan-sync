@@ -79,8 +79,6 @@ public class ConfigurationService
 
         if (configuration.Version < CurrentSchemaVersion)
         {
-            foreach (var (_, charConfig) in configuration.Characters)
-                charConfig.MigrateLegacyTrackingProperties();
             configuration.Version = CurrentSchemaVersion;
             Save();
         }

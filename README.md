@@ -5,7 +5,7 @@ Dalamud plugin for [allagan.app](https://allagan.app) — automatically syncs yo
 ## What it does
 
 - **Collection Sync** — Detects your unlocked mounts, minions, orchestrion rolls, emotes, titles, achievements, bardings, Triple Triad cards, fashion accessories, facewear, sightseeing log entries, fish, Blue Mage spells, and character customizations, then syncs them with your allagan.app profile.
-- **Event Tracking** (opt-in) — Captures in-game activities like desynthesis results and contributes them to community-driven statistics such as drop rates.
+- **Event Tracking** (opt-in) — Captures in-game activities and contributes them to community-driven statistics such as drop rates.
 
 ## Install as Custom Repo in Dalamud
 
