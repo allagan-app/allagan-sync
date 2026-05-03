@@ -61,9 +61,6 @@ public class CharacterConfig
         SyncItemSources[sourceKey] = enabled;
     }
 
-    // Legacy properties for deserialization of v1 configs
-    [JsonInclude] public bool? TrackDesynth { internal get; set; }
-
     // Legacy properties for deserialization of v0 configs
     [JsonInclude] public bool? SyncMounts { internal get; set; }
     [JsonInclude] public bool? SyncMinions { internal get; set; }
@@ -112,13 +109,6 @@ public class CharacterConfig
         SyncFish = null;
         SyncBlueMageSpells = null;
         SyncCharacterCustomizations = null;
-    }
-
-    internal void MigrateLegacyTrackingProperties()
-    {
-        if (TrackDesynth.HasValue)
-            TrackEvents["desynth_result"] = TrackDesynth.Value;
-        TrackDesynth = null;
     }
 
     private void MigrateLegacyProperty(string key, bool? legacyValue)

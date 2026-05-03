@@ -94,8 +94,6 @@ public sealed class Plugin : IDalamudPlugin
 
         // Event tracking
         eventTrackingService = new EventTrackingService(log, configService, apiClient, instanceSessionService);
-        var desynthTracker = new DesynthTracker(log, dataManager, gameInteropProvider);
-        eventTrackingService.RegisterTracker(desynthTracker);
         var retainerMissionTracker = new RetainerMissionTracker(log, dataManager, gameInteropProvider);
         eventTrackingService.RegisterTracker(retainerMissionTracker);
         var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);

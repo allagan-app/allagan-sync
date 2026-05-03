@@ -163,9 +163,6 @@ public class EventsTab
 
     private static string GetPayloadPreview(TrackedEvent evt)
     {
-        if (evt.Payload is DesynthResultPayload desynth)
-            return $"Item {desynth.SourceItemId} -> {desynth.Results.Count} result(s)";
-
         if (evt.Payload is MonsterSpawnPayload spawn)
             return $"BNpc {spawn.BnpcBaseId} Lv{spawn.Level} in {spawn.TerritoryTypeId} (Layout {spawn.LayoutId})";
 
@@ -184,60 +181,17 @@ public class EventsTab
     {
         ImGui.Indent();
 
-        if (evt.Payload is DesynthResultPayload desynth)
+        try
         {
-            DrawDesynthDetail(desynth);
+            var json = JsonSerializer.Serialize(evt.Payload, new JsonSerializerOptions { WriteIndented = true });
+            ImGui.TextDisabled(json);
         }
-        else
+        catch
         {
-            try
-            {
-                var json = JsonSerializer.Serialize(evt.Payload, new JsonSerializerOptions { WriteIndented = true });
-                ImGui.TextDisabled(json);
-            }
-            catch
-            {
-                ImGui.TextDisabled(evt.Payload?.ToString() ?? "(empty)");
-            }
+            ImGui.TextDisabled(evt.Payload?.ToString() ?? "(empty)");
         }
 
         ImGui.Unindent();
-    }
-
-    private static void DrawDesynthDetail(DesynthResultPayload desynth)
-    {
-        ImGui.TextDisabled("Source Item ID:");
-        ImGui.SameLine();
-        ImGui.Text(desynth.SourceItemId.ToString());
-
-        ImGui.TextDisabled("Desynth Level:");
-        ImGui.SameLine();
-        ImGui.Text($"{desynth.DesynthLevel:F1}");
-
-        if (desynth.Results.Count > 0 &&
-            ImGui.BeginTable("DesynthResults", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
-        {
-            ImGui.TableSetupColumn("Item ID", ImGuiTableColumnFlags.WidthFixed, 80);
-            ImGui.TableSetupColumn("Count", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("HQ", ImGuiTableColumnFlags.WidthFixed, 30);
-            ImGui.TableHeadersRow();
-
-            foreach (var result in desynth.Results)
-            {
-                ImGui.TableNextRow();
-
-                ImGui.TableNextColumn();
-                ImGui.Text(result.ItemId.ToString());
-
-                ImGui.TableNextColumn();
-                ImGui.Text(result.Count.ToString());
-
-                ImGui.TableNextColumn();
-                ImGui.Text(result.IsHq ? "Yes" : "");
-            }
-
-            ImGui.EndTable();
-        }
     }
 
     // ── Send History ───────────────────────────────────────────────────
