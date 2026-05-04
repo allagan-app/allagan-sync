@@ -26,7 +26,6 @@ public sealed class Plugin : IDalamudPlugin
     private readonly AllaganSyncService syncService;
     private readonly InstanceSessionService instanceSessionService;
     private readonly EventTrackingService eventTrackingService;
-    private readonly ContainerOpenTracker containerOpenTracker;
     private readonly GearItemCollector gearItemCollector;
     private readonly WindowSystem windowSystem = new("AllaganSync");
     private readonly MainWindow mainWindow;
@@ -102,8 +101,6 @@ public sealed class Plugin : IDalamudPlugin
         eventTrackingService.RegisterTracker(dutyRewardTracker);
         var tripleTriadDuelTracker = new TripleTriadDuelTracker(log, addonLifecycle, gameGui);
         eventTrackingService.RegisterTracker(tripleTriadDuelTracker);
-        containerOpenTracker = new ContainerOpenTracker(log, gameInventory, framework, apiClient);
-        eventTrackingService.RegisterTracker(containerOpenTracker);
         eventTrackingService.UpdateTrackerStates();
 
         if (clientState.IsLoggedIn)
@@ -136,7 +133,6 @@ public sealed class Plugin : IDalamudPlugin
         if (clientState.IsLoggedIn)
         {
             syncService.RequestData();
-            _ = containerOpenTracker.LoadContainerListAsync();
             _ = LoadAbilitiesAndUpdateStatesAsync();
         }
 
@@ -165,7 +161,6 @@ public sealed class Plugin : IDalamudPlugin
         await eventTrackingService.LoadAbilitiesAsync();
         OnCharacterChanged();
         eventTrackingService.Start();
-        _ = containerOpenTracker.LoadContainerListAsync();
     }
 
     private async Task LoadAbilitiesAndUpdateStatesAsync()
@@ -183,7 +178,6 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnLogout(int type, int code)
     {
-        containerOpenTracker.FlushAndClear();
         _ = eventTrackingService.FlushAsync();
     }
 
