@@ -59,23 +59,6 @@ public class AllaganApiClient : IDisposable
         return await httpClient.SendAsync(request, cancellationToken);
     }
 
-    public async Task<HttpResponseMessage> GetAsync(string endpoint, CancellationToken cancellationToken = default)
-    {
-        var baseUrl = BaseUrl;
-        var url = endpoint.StartsWith("/")
-            ? $"{baseUrl}{endpoint}"
-            : $"{baseUrl}/{endpoint}";
-
-#if DEBUG
-        log.Info($"GET {url}");
-#endif
-
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-        return await httpClient.SendAsync(request, cancellationToken);
-    }
-
     public async Task<string[]> GetMeAbilitiesAsync(CancellationToken cancellationToken = default)
     {
         var token = ResolveToken();
