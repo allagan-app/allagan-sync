@@ -1,4 +1,3 @@
 <Solution>
   <Project Path="AllaganSync/AllaganSync.csproj" />
-  <Project Path="AllaganSync.Tests/AllaganSync.Tests.csproj" />
 </Solution>
