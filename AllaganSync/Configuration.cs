@@ -22,13 +22,6 @@ public class CharacterConfig
     public List<uint> CabinetItemIds { get; set; } = [];
     public long CabinetCachedAtUnix { get; set; }
 
-    // Event Tracking
-    public bool TrackingEnabled { get; set; } = false;
-    public bool TrackingPaused { get; set; } = false;
-
-    // Event tracking toggles (dictionary-based, default true for unknown keys)
-    public Dictionary<string, bool> TrackEvents { get; set; } = new();
-
     public bool HasApiToken => !string.IsNullOrEmpty(ApiToken);
 
     public bool IsCollectionEnabled(string collectionKey)
@@ -39,16 +32,6 @@ public class CharacterConfig
     public void SetCollectionEnabled(string collectionKey, bool enabled)
     {
         SyncCollections[collectionKey] = enabled;
-    }
-
-    public bool IsEventEnabled(string eventKey)
-    {
-        return !TrackEvents.TryGetValue(eventKey, out var enabled) || enabled;
-    }
-
-    public void SetEventEnabled(string eventKey, bool enabled)
-    {
-        TrackEvents[eventKey] = enabled;
     }
 
     public bool IsItemSourceEnabled(string sourceKey)
