@@ -11,7 +11,6 @@ public class MainWindow : Window, IDisposable
 {
     private readonly InfoTab infoTab;
     private readonly CollectionTab collectionTab;
-    private readonly EventsTab eventsTab;
 #if DEBUG
     private readonly DebugTab debugTab;
 #endif
@@ -20,18 +19,13 @@ public class MainWindow : Window, IDisposable
         ConfigurationService configService,
         AllaganSyncService syncService,
         AllaganApiClient apiClient,
-        EventTrackingService eventTrackingService,
-#if DEBUG
-        DiagnosticLoggingService? diagnosticLoggingService = null,
-#endif
         Action? openSettings = null)
         : base("Allagan Sync###AllaganSyncMain")
     {
         infoTab = new InfoTab(configService, openSettings);
         collectionTab = new CollectionTab(configService, syncService, openSettings);
-        eventsTab = new EventsTab(configService, eventTrackingService, openSettings);
 #if DEBUG
-        debugTab = new DebugTab(apiClient, configService, eventTrackingService, diagnosticLoggingService);
+        debugTab = new DebugTab(apiClient, configService);
 #endif
 
         Size = new Vector2(500, 400);
@@ -51,12 +45,6 @@ public class MainWindow : Window, IDisposable
             if (ImGui.BeginTabItem("Collection"))
             {
                 collectionTab.Draw();
-                ImGui.EndTabItem();
-            }
-
-            if (ImGui.BeginTabItem("Events"))
-            {
-                eventsTab.Draw();
                 ImGui.EndTabItem();
             }
 

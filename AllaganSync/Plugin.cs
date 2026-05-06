@@ -1,13 +1,10 @@
 using System;
-using System.Threading.Tasks;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
-using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using AllaganSync.Collecting.Collectors;
 using AllaganSync.Services;
-using AllaganSync.Tracking.Trackers;
 using AllaganSync.UI;
 
 namespace AllaganSync;
@@ -24,16 +21,11 @@ public sealed class Plugin : IDalamudPlugin
     private readonly IFramework framework;
     private readonly AllaganApiClient apiClient;
     private readonly AllaganSyncService syncService;
-    private readonly InstanceSessionService instanceSessionService;
-    private readonly EventTrackingService eventTrackingService;
     private readonly GearItemCollector gearItemCollector;
     private readonly WindowSystem windowSystem = new("AllaganSync");
     private readonly MainWindow mainWindow;
     private readonly SettingsWindow settingsWindow;
     private ulong lastContentId;
-#if DEBUG
-    private DiagnosticLoggingService? diagnosticLoggingService;
-#endif
 
     public Plugin(
         IDalamudPluginInterface pluginInterface,
@@ -42,15 +34,8 @@ public sealed class Plugin : IDalamudPlugin
         IPlayerState playerState,
         IDataManager dataManager,
         IClientState clientState,
-        ICondition condition,
-        IDutyState dutyState,
         IFramework framework,
-        IGameInventory gameInventory,
         IUnlockState unlockState,
-        IObjectTable objectTable,
-        IAddonLifecycle addonLifecycle,
-        IGameGui gameGui,
-        IChatGui chatGui,
         IGameInteropProvider gameInteropProvider)
     {
         this.pluginInterface = pluginInterface;
@@ -83,36 +68,8 @@ public sealed class Plugin : IDalamudPlugin
         gearItemCollector = new GearItemCollector(dataManager, log, configService, framework, gameInteropProvider);
         syncService.RegisterCollector(gearItemCollector);
 
-        // Instance session tracking
-        instanceSessionService = new InstanceSessionService(clientState, condition, log);
-
-#if DEBUG
-        // Diagnostic logging (standalone, not an IGameEventTracker)
-        diagnosticLoggingService = new DiagnosticLoggingService(log, clientState, condition, dutyState, objectTable, gameInventory, gameInteropProvider);
-#endif
-
-        // Event tracking
-        eventTrackingService = new EventTrackingService(log, configService, apiClient, instanceSessionService);
-        var monsterSpawnTracker = new MonsterSpawnTracker(log, clientState, gameInteropProvider);
-        eventTrackingService.RegisterTracker(monsterSpawnTracker);
-        var monsterDropTracker = new MonsterDropTracker(log, clientState, objectTable, gameInventory, framework, gameInteropProvider);
-        eventTrackingService.RegisterTracker(monsterDropTracker);
-        var dutyRewardTracker = new DutyRewardTracker(log, clientState, dutyState, gameInventory, framework);
-        eventTrackingService.RegisterTracker(dutyRewardTracker);
-        var tripleTriadDuelTracker = new TripleTriadDuelTracker(log, addonLifecycle, gameGui);
-        eventTrackingService.RegisterTracker(tripleTriadDuelTracker);
-        eventTrackingService.UpdateTrackerStates();
-
-        if (clientState.IsLoggedIn)
-            eventTrackingService.Start();
-
-        settingsWindow = new SettingsWindow(configService, eventTrackingService);
-        mainWindow = new MainWindow(
-            configService, syncService, apiClient, eventTrackingService,
-#if DEBUG
-            diagnosticLoggingService,
-#endif
-            () => settingsWindow.IsOpen = true);
+        settingsWindow = new SettingsWindow(configService);
+        mainWindow = new MainWindow(configService, syncService, apiClient, () => settingsWindow.IsOpen = true);
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(settingsWindow);
 
@@ -125,16 +82,10 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "Open the Allagan Sync window."
         });
 
-        // Request data when character logs in
         clientState.Login += OnLogin;
-        clientState.Logout += OnLogout;
 
-        // If already logged in, request now
         if (clientState.IsLoggedIn)
-        {
             syncService.RequestData();
-            _ = LoadAbilitiesAndUpdateStatesAsync();
-        }
 
         log.Info("Allagan Sync loaded.");
     }
@@ -145,40 +96,9 @@ public sealed class Plugin : IDalamudPlugin
         syncService.RefreshCounts();
     }
 
-    private void OnCharacterChanged()
-    {
-        RefreshDisplayData();
-        eventTrackingService.UpdateTrackerStates();
-    }
-
     private void OnLogin()
     {
-        _ = OnLoginAsync();
-    }
-
-    private async Task OnLoginAsync()
-    {
-        await eventTrackingService.LoadAbilitiesAsync();
-        OnCharacterChanged();
-        eventTrackingService.Start();
-    }
-
-    private async Task LoadAbilitiesAndUpdateStatesAsync()
-    {
-        try
-        {
-            await eventTrackingService.LoadAbilitiesAsync();
-            eventTrackingService.UpdateTrackerStates();
-        }
-        catch (Exception ex)
-        {
-            log.Error($"Failed to load abilities: {ex}");
-        }
-    }
-
-    private void OnLogout(int type, int code)
-    {
-        _ = eventTrackingService.FlushAsync();
+        RefreshDisplayData();
     }
 
     private void OnFrameworkUpdate(IFramework _)
@@ -189,7 +109,7 @@ public sealed class Plugin : IDalamudPlugin
 
         lastContentId = currentContentId;
         if (currentContentId != 0)
-            OnCharacterChanged();
+            RefreshDisplayData();
     }
 
     public void ToggleMainWindow()
@@ -223,7 +143,6 @@ public sealed class Plugin : IDalamudPlugin
     public void Dispose()
     {
         clientState.Login -= OnLogin;
-        clientState.Logout -= OnLogout;
 
         pluginInterface.UiBuilder.Draw -= windowSystem.Draw;
         pluginInterface.UiBuilder.OpenConfigUi -= ToggleSettingsWindow;
@@ -233,12 +152,7 @@ public sealed class Plugin : IDalamudPlugin
 
         windowSystem.RemoveAllWindows();
         mainWindow.Dispose();
-#if DEBUG
-        diagnosticLoggingService?.Dispose();
-#endif
         gearItemCollector.Dispose();
-        instanceSessionService.Dispose();
-        eventTrackingService.Dispose();
         apiClient.Dispose();
 
         log.Info("Allagan Sync unloaded.");

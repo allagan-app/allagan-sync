@@ -9,15 +9,13 @@ public class SettingsTab
 {
     private const string TokenUrl = "https://allagan.app/user/characters";
     private readonly ConfigurationService configService;
-    private readonly EventTrackingService eventTrackingService;
 
     private string tokenInput = string.Empty;
-    private bool isEditingToken = false;
+    private bool isEditingToken;
 
-    public SettingsTab(ConfigurationService configService, EventTrackingService eventTrackingService)
+    public SettingsTab(ConfigurationService configService)
     {
         this.configService = configService;
-        this.eventTrackingService = eventTrackingService;
     }
 
     public void Draw()
@@ -27,14 +25,7 @@ public class SettingsTab
             return;
 
         DrawTokenSection(charConfig);
-
-        ImGui.Spacing();
-        ImGui.Spacing();
-
-        DrawTrackingSection(charConfig);
     }
-
-    // ── Token Management ──────────────────────────────────────────────
 
     private void DrawTokenSection(CharacterConfig charConfig)
     {
@@ -73,96 +64,29 @@ public class SettingsTab
                 tokenInput = string.Empty;
                 isEditingToken = false;
             }
+
+            return;
+        }
+
+        if (charConfig.HasApiToken)
+        {
+            ImGui.Text("Token: ********");
+            ImGui.SameLine();
+            if (ImGui.Button("Change"))
+                isEditingToken = true;
+            ImGui.SameLine();
+            if (ImGui.Button("Clear"))
+            {
+                charConfig.ApiToken = string.Empty;
+                configService.Save();
+            }
         }
         else
         {
-            if (charConfig.HasApiToken)
-            {
-                ImGui.Text("Token: ********");
-                ImGui.SameLine();
-                if (ImGui.Button("Change"))
-                {
-                    isEditingToken = true;
-                }
-                ImGui.SameLine();
-                if (ImGui.Button("Clear"))
-                {
-                    charConfig.ApiToken = string.Empty;
-                    configService.Save();
-                }
-            }
-            else
-            {
-                ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "No token configured");
-                ImGui.SameLine();
-                if (ImGui.Button("Set Token"))
-                {
-                    isEditingToken = true;
-                }
-            }
-        }
-    }
-
-    // ── Event Tracking ────────────────────────────────────────────────
-
-    private void DrawTrackingSection(CharacterConfig charConfig)
-    {
-        ImGui.Text("Event Tracking");
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        if (!charConfig.HasApiToken)
-        {
-            ImGui.BeginDisabled();
-        }
-
-        ImGui.TextWrapped("When enabled, the plugin automatically captures certain in-game activities " +
-            "and contributes them to Allagan's community-driven statistics. " +
-            "Your data is only used anonymously in aggregate statistics.");
-        ImGui.Spacing();
-
-        var trackingEnabled = charConfig.TrackingEnabled;
-        if (ImGui.Checkbox("Enable Event Tracking", ref trackingEnabled))
-        {
-            charConfig.TrackingEnabled = trackingEnabled;
-            configService.Save();
-
-            if (trackingEnabled)
-                eventTrackingService.Start();
-            else
-                eventTrackingService.Stop();
-
-            eventTrackingService.UpdateTrackerStates();
-        }
-
-        if (!charConfig.HasApiToken)
-        {
-            ImGui.EndDisabled();
+            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "No token configured");
             ImGui.SameLine();
-            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "(requires API token)");
-        }
-
-        if (charConfig.TrackingEnabled && charConfig.HasApiToken)
-        {
-            ImGui.Spacing();
-            ImGui.TextDisabled("Tracked Events");
-            ImGui.Indent();
-
-            foreach (var tracker in eventTrackingService.Trackers)
-            {
-                if (tracker.RequiredAbility != null && !eventTrackingService.HasAbility(tracker.RequiredAbility))
-                    continue;
-
-                var enabled = charConfig.IsEventEnabled(tracker.EventKey);
-                if (ImGui.Checkbox(tracker.DisplayName, ref enabled))
-                {
-                    charConfig.SetEventEnabled(tracker.EventKey, enabled);
-                    configService.Save();
-                    eventTrackingService.UpdateTrackerStates();
-                }
-            }
-
-            ImGui.Unindent();
+            if (ImGui.Button("Set Token"))
+                isEditingToken = true;
         }
     }
 }

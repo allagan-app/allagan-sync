@@ -10,11 +10,11 @@ public class SettingsWindow : Window
 {
     private readonly SettingsTab settingsTab;
 
-    public SettingsWindow(ConfigurationService configService, EventTrackingService eventTrackingService)
+    public SettingsWindow(ConfigurationService configService)
         : base("Allagan Sync — Settings###AllaganSyncSettings")
     {
-        settingsTab = new SettingsTab(configService, eventTrackingService);
-        Size = new Vector2(400, 300);
+        settingsTab = new SettingsTab(configService);
+        Size = new Vector2(400, 200);
         SizeCondition = ImGuiCond.FirstUseEver;
     }
 
