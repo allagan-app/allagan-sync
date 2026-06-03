@@ -53,7 +53,6 @@ public sealed class Plugin : IDalamudPlugin
         // Register collectors (order determines UI display order)
         syncService.RegisterCollector(new OrchestrionCollector(dataManager, unlockState));
         syncService.RegisterCollector(new EmoteCollector(dataManager, unlockState, playerState));
-        syncService.RegisterCollector(new TitleCollector(dataManager, log));
         syncService.RegisterCollector(new MountCollector(dataManager, unlockState));
         syncService.RegisterCollector(new MinionCollector(dataManager, unlockState));
         syncService.RegisterCollector(new AchievementCollector(dataManager, log));
